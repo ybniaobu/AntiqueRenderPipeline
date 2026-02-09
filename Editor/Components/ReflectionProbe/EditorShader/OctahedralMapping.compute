@@ -1,0 +1,36 @@
+#pragma kernel OctahedralMappingKernel
+
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
+
+RWTexture2D<float4> _OutputTexture;
+TextureCube<float4> _Cubemap;
+
+SAMPLER(sampler_LinearClamp);
+
+float4 _TextureSize; // x: width, y: height, z: 1 / width, w, 1 / height
+int _MipMap;
+
+[numthreads(8, 8, 1)]
+void OctahedralMappingKernel(uint3 id : SV_DispatchThreadID)
+{
+    int x = 0;
+    int y = 0;
+    int height = _TextureSize.y;
+    
+    for (int i = 1; i <= _MipMap; i++)
+    {
+        if ((i & 1) == 1)
+            x += height;
+        else
+            y += height;
+        height = height >> 1;
+    }
+    
+    float2 uv = (id.xy + 0.5) / height;
+    float3 dir = UnpackNormalOctQuadEncode(uv * 2.0 - 1.0);
+    float4 color = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_LinearClamp, dir, _MipMap);
+    
+    uint2 outputCoord = id.xy + uint2(x, y);
+    _OutputTexture[outputCoord] = float4(color);
+}

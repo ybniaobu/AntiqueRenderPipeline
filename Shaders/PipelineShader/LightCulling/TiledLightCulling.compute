@@ -1,0 +1,501 @@
+#pragma kernel TiledLightCulling
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+
+#pragma multi_compile _ _TILE_CULLING_SPLIT_DEPTH
+
+#define THREAD_NUM_X 16 // equal to per tile size
+#define THREAD_NUM_Y 16
+
+#include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
+#include "../../ShaderLibrary/IntersectionTestLibrary.hlsl"
+
+TEXTURE2D(_CameraDepthTexture);
+
+// Light Input
+float4 _PunctualLightCount; // x: punctual light count, yzw: 暂无
+struct LightInputInfos
+{
+    float4 bound; // xyz: light position, w: light range
+    float4 spotLightInfos; // xyz: spot light direction, w: half outer angle (point light is -1)
+};
+StructuredBuffer<LightInputInfos> _LightInputInfos; // xyz: light position, w: light range
+
+// Reflection Probe Input
+float4 _ReflectionProbeCount; // x: reflection probe count, yzw: 暂无
+float4 _ReflectionProbeBoxCenter[MAX_REFLECTION_PROBE_COUNT]; // xyz: box center, w: importance
+float4 _ReflectionProbeBoxExtent[MAX_REFLECTION_PROBE_COUNT]; // xyz: box extent, w: box projection
+
+// Global Constant
+float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bufferSize.x, w: bufferSize.y
+
+// Tile Params
+float4 _TileParams; // xy: tileCountXY, zw: tileUVSizeXY
+float4 _CameraNearPlaneLB; // xyz: near plane left bottom point position in view space
+float4 _TileNearPlaneSize; // xy: tile near plane size in view/world space
+
+// Output RWStructuredBuffer
+RWStructuredBuffer<uint> _TilesLightIndicesBuffer;
+RWStructuredBuffer<uint> _TileReflectionProbeIndicesBuffer;
+
+// Group Shared Memory
+groupshared uint tileMinDepthInt;
+groupshared uint tileMaxDepthInt;
+groupshared uint tileDepthMask;
+
+groupshared uint lightCountInTile;
+groupshared uint lightIndicesInTile[MAX_PUNCTUAL_LIGHT_COUNT];
+
+groupshared uint reflectionProbeCountInTile;
+groupshared uint reflectionProbeIndicesInTile[MAX_REFLECTION_PROBE_COUNT];
+
+// ----------------------------------------------------------------------------------------------------
+// Input
+// ----------------------------------------------------------------------------------------------------
+
+inline float GetPunctualLightCount()                       { return _PunctualLightCount.x; }
+inline float3 GetPunctualLightPosition(uint lightIndex)    { return _LightInputInfos[lightIndex].bound.xyz; }
+inline float GetPunctualLightRange(uint lightIndex)        { return _LightInputInfos[lightIndex].bound.w; }
+inline float3 GetSpotLightDirection(uint lightIndex)       { return _LightInputInfos[lightIndex].spotLightInfos.xyz; }
+inline float GetSpotLightHalfOuterAngle(uint lightIndex)   { return _LightInputInfos[lightIndex].spotLightInfos.w; }
+
+inline float GetReflectionProbeCount()                     { return _ReflectionProbeCount.x; }
+inline float3 GetReflectionProbeBoxCenter(uint index)      { return _ReflectionProbeBoxCenter[index].xyz; }
+inline float3 GetReflectionProbeBoxExtent(uint index)      { return _ReflectionProbeBoxExtent[index].xyz; }
+
+// ----------------------------------------------------------------------------------------------------
+// Intersect Test Referred Functions
+// ----------------------------------------------------------------------------------------------------
+
+void GetTileFrustumCorners(out float3 tileCorners[4], uint2 tileIndex, float3 cameraNearPlaneLB, float2 tileNearPlaneSize)
+{
+    tileCorners[0] = cameraNearPlaneLB + tileIndex.x * float3(tileNearPlaneSize.x, 0, 0) + tileIndex.y * float3(0, tileNearPlaneSize.y, 0);
+    tileCorners[1] = tileCorners[0] + float3(0, tileNearPlaneSize.y, 0);
+    tileCorners[2] = tileCorners[1] + float3(tileNearPlaneSize.x, 0, 0);
+    tileCorners[3] = tileCorners[0] + float3(tileNearPlaneSize.x, 0, 0);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// 2.5D Culling Referred Functions
+// https://www.slideshare.net/slideshow/a-25d-culling-for-forward-siggraph-asia-2012/34909590
+// ----------------------------------------------------------------------------------------------------
+
+uint GetLightBitMask(float2 tileDepthMinMax, float2 lightDepthMinMax, float invDepthRange)
+{
+    uint depthSlotMin = floor((lightDepthMinMax.x - tileDepthMinMax.x) * invDepthRange);
+    uint depthSlotMax = floor((lightDepthMinMax.y - tileDepthMinMax.x) * invDepthRange);
+    depthSlotMin = clamp(depthSlotMin, 0, 31);
+    depthSlotMax = clamp(depthSlotMax, 0, 31);
+
+    // uint lightMask = 0;
+    // for (uint i = depthSlotMin; i <= depthSlotMax; i++)
+    // {
+    //     lightMask |= (1 << i);
+    // }
+
+    uint lightMask = 0xFFFFFFFF;
+    lightMask >>= 31 - (depthSlotMax - depthSlotMin);
+    lightMask <<= depthSlotMin;
+    return lightMask;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Depth Intersect Test
+// ----------------------------------------------------------------------------------------------------
+
+// Caution: input param lightPositionVS.z should be positive(left-handed)
+float2 GetSpotLightMinMaxDepth(float3 lightPositionVS, float lightRange, float3 spotLightDirVS, float angle)
+{
+    float cosAngle = cos(angle);
+    float coneHeight = lightRange * cosAngle;
+    float3 endPointVS = lightPositionVS + coneHeight * spotLightDirVS;
+    float coneRadius = coneHeight * tan(angle);
+    float3 endPointVec = endPointVS - lightPositionVS;
+    float sinAlpha = sqrt(1.0 - endPointVec.z * endPointVec.z / dot(endPointVec, endPointVec));
+
+    float2 minMax = float2(lightPositionVS.z - lightRange, lightPositionVS.z + lightRange);
+    if (-endPointVec.z < coneHeight * cosAngle) minMax.x = min(lightPositionVS.z, endPointVS.z - sinAlpha * coneRadius);
+    if (endPointVec.z < coneHeight * cosAngle) minMax.y = max(lightPositionVS.z, endPointVS.z + sinAlpha * coneRadius);
+    return minMax;
+}
+
+float2 GetLightMinMaxDepth(float3 lightPositionVS, float lightRange, float3 spotLightDirVS, float angle)
+{
+    float2 minMax;
+    if (angle > 0.0)
+    {
+        minMax = GetSpotLightMinMaxDepth(lightPositionVS, lightRange, spotLightDirVS, angle);
+    }
+    else
+    {
+        minMax = float2(lightPositionVS.z - lightRange, lightPositionVS.z + lightRange);
+    }
+    return max(minMax, 0.0);
+}
+
+bool DepthIntersect(float2 tileDepthMinMax, float2 lightDepthMinMax)
+{
+    return lightDepthMinMax.x <= tileDepthMinMax.y && lightDepthMinMax.y >= tileDepthMinMax.x;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// AABB Intersect Test -- Suitable For Point Light Sphere & Spot Light Cone
+// ----------------------------------------------------------------------------------------------------
+
+bool BoundingSphereIntersect(float3 tileMin, float3 tileMax, float3 lightPositionVS, float lightRange)
+{
+    float3 closestPoint = clamp(lightPositionVS, tileMin, tileMax);
+    float3 diff = closestPoint - lightPositionVS;
+    float sqrDiff = dot(diff, diff);
+    float sqrLightRange = lightRange * lightRange;
+    return sqrDiff <= sqrLightRange;
+}
+
+// From https://bartwronski.com/2017/04/13/cull-that-cone/
+bool SpotConeIntersectTest(float3 tileMin, float3 tileMax, float3 lightPositionVS, float lightRange, float3 spotLightDirVS, float angle)
+{
+    float3 tileCenter = 0.5 * (tileMin + tileMax);
+    float3 extent = tileMax - tileCenter;
+    float tileRadius = sqrt(dot(extent, extent));
+    float3 V = tileCenter - lightPositionVS;
+    float VLenSqr = dot(V, V);
+    float V1Len = dot(V, spotLightDirVS);
+
+    float distanceClosestPoint = cos(angle) * sqrt(VLenSqr - V1Len * V1Len) - V1Len * sin(angle);
+
+    bool angleCull = distanceClosestPoint > tileRadius;
+    bool frontCull = V1Len > tileRadius + lightRange;
+    bool backCull = V1Len < -tileRadius;
+    return !(angleCull || frontCull || backCull);
+}
+
+bool AABBIntersectTest(uint2 tileIndex, float3 lightPositionVS, float lightRange, float3 spotLightDirVS, float angle, float2 tileDepthMinMax, float2 lightDepthMinMax)
+{
+    float minZ = max(tileDepthMinMax.x, lightDepthMinMax.x);
+    float maxZ = min(tileDepthMinMax.y, lightDepthMinMax.y);
+    float nearPlaneScale = minZ / _ProjectionParams.y;
+    float farPlaneScale = maxZ / _ProjectionParams.y;
+
+    float2 tileCorner0 = _CameraNearPlaneLB.xy + float2(tileIndex.x * _TileNearPlaneSize.x, tileIndex.y * _TileNearPlaneSize.y);
+    float2 tileCorner2 = tileCorner0 + float2(_TileNearPlaneSize.x, _TileNearPlaneSize.y);
+
+    float3 tileMin = float3(min(tileCorner0 * nearPlaneScale, tileCorner0 * farPlaneScale), minZ);
+    float3 tileMax = float3(max(tileCorner2 * nearPlaneScale, tileCorner2 * farPlaneScale), maxZ);
+
+    bool depthTest = DepthIntersect(tileDepthMinMax, lightDepthMinMax);
+    bool boundingSphereTest = BoundingSphereIntersect(tileMin, tileMax, lightPositionVS, lightRange);
+    bool coneTest = angle > 0.0 ? SpotConeIntersectTest(tileMin, tileMax, lightPositionVS, lightRange, spotLightDirVS, angle) : true;
+
+    return depthTest && boundingSphereTest && coneTest;
+}
+
+// TODO: 将这个和上面 AABBIntersectTest 中的重复计算部分合并
+bool BuildTileAABB(uint2 tileIndex, float2 tileDepthMinMax, out AABB tileAABB)
+{
+    float minZ = tileDepthMinMax.x;
+    float maxZ = tileDepthMinMax.y;
+    float nearPlaneScale = minZ / _ProjectionParams.y;
+    float farPlaneScale = maxZ / _ProjectionParams.y;
+    float2 tileCorner0 = _CameraNearPlaneLB.xy + float2(tileIndex.x * _TileNearPlaneSize.x, tileIndex.y * _TileNearPlaneSize.y);
+    float2 tileCorner2 = tileCorner0 + float2(_TileNearPlaneSize.x, _TileNearPlaneSize.y);
+    float3 tileMin = float3(min(tileCorner0 * nearPlaneScale, tileCorner0 * farPlaneScale), minZ);
+    float3 tileMax = float3(max(tileCorner2 * nearPlaneScale, tileCorner2 * farPlaneScale), maxZ);
+    tileAABB.center = (tileMax + tileMin) * 0.5;
+    tileAABB.extent = (tileMax - tileMin) * 0.5;
+    return all(tileMin <= tileMax);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Kernel
+// ----------------------------------------------------------------------------------------------------
+
+[numthreads(THREAD_NUM_X, THREAD_NUM_Y, 1)]
+void TiledLightCulling(uint3 id : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadID, uint3 groupId : SV_GroupID, uint groupIndex : SV_GroupIndex)
+{
+    // ------------------------- Initialize shared memory -------------------------
+    
+    if (groupIndex == 0)
+    {
+        tileMinDepthInt = 0x7f7fffff;
+        tileMaxDepthInt = 0;
+        
+        lightCountInTile = 0;
+        reflectionProbeCountInTile = 0;
+        
+        #if _TILE_CULLING_SPLIT_DEPTH
+        tileDepthMask = 0;
+        #endif
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // ------------------------- Get the minimum and maximum depth of the tile -------------------------
+    
+    bool inScreen = (int) id.x < _CameraBufferSize.z && (int) id.y < _CameraBufferSize.w;
+
+    float depth = LOAD_TEXTURE2D_LOD(_CameraDepthTexture, id.xy, 0).r;
+    float linearDepth = GetViewDepthFromDepthTexture(depth);
+    uint z = asuint(linearDepth);
+
+    #if UNITY_REVERSED_Z
+    bool isNotSkybox = depth != 0.0;
+    #else
+    bool isNotSkybox = depth != 1.0;
+    #endif
+    
+    if (inScreen && isNotSkybox)
+    {
+        InterlockedMin(tileMinDepthInt, z);
+        InterlockedMax(tileMaxDepthInt, z);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    float2 tileDepthMinMax = float2(asfloat(tileMinDepthInt), asfloat(tileMaxDepthInt));
+
+    // ------------------------- 2.5D Culling: Get the tile depth mask -------------------------
+    
+    #if _TILE_CULLING_SPLIT_DEPTH
+    float invDepthRange = 32.0 / (tileDepthMinMax.y - tileDepthMinMax.x + 0.00001);
+
+    if (inScreen && isNotSkybox)
+    {
+        uint depthSlot = floor((linearDepth - tileDepthMinMax.x) * invDepthRange);
+        InterlockedOr(tileDepthMask, 1 << depthSlot);
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+    #endif
+    
+    // ------------------------- Intersect test -------------------------
+    
+    uint lightIndex = groupIndex;
+    uint2 tileIndex = groupId.xy;
+
+    bool lightIntersect, reflectionProbeIntersect;
+    
+    // light intersect test
+    UNITY_BRANCH
+    if ((float) lightIndex >= GetPunctualLightCount())
+    {
+        lightIntersect = false;
+    }
+    else
+    {
+        float3 lightPositionVS = TransformWorldToView(GetPunctualLightPosition(lightIndex));
+        lightPositionVS.z = -lightPositionVS.z;
+        float lightRange = GetPunctualLightRange(lightIndex);
+        float3 spotLightDirVS = TransformWorldToViewDir(GetSpotLightDirection(lightIndex));
+        spotLightDirVS.z = -spotLightDirVS.z;
+        float angle = GetSpotLightHalfOuterAngle(lightIndex);
+
+        float2 lightDepthMinMax = GetLightMinMaxDepth(lightPositionVS, lightRange, spotLightDirVS, angle);
+        
+        bool AABBTest = AABBIntersectTest(tileIndex, lightPositionVS, lightRange, spotLightDirVS, angle, tileDepthMinMax, lightDepthMinMax);
+
+        #if _TILE_CULLING_SPLIT_DEPTH
+        uint lightMask = GetLightBitMask(tileDepthMinMax, lightDepthMinMax, invDepthRange);
+        bool intersect2_5D = lightMask & tileDepthMask;
+        AABBTest = AABBTest && intersect2_5D;
+        #endif
+
+        lightIntersect = AABBTest;
+    }
+    
+    // reflection probe intersect test
+    UNITY_BRANCH
+    if ((float) groupIndex >= GetReflectionProbeCount())
+    {
+        reflectionProbeIntersect = false;
+    }
+    else
+    {
+        AABB tileAABB, probeWorldAABB;
+        OBB probeOBB;
+        bool validAABB = BuildTileAABB(tileIndex, tileDepthMinMax, tileAABB);
+        probeWorldAABB.center = GetReflectionProbeBoxCenter(groupIndex);
+        probeWorldAABB.extent = GetReflectionProbeBoxExtent(groupIndex);
+        BuildViewOBBFromWorldAABB(probeWorldAABB, probeOBB);
+        bool OBBTest = AABB_OBB_Intersect_3Axis(tileAABB, probeOBB) && validAABB;
+        // TODO：是否补充 2.5D Cull
+        reflectionProbeIntersect = OBBTest;
+    }
+    
+    if (lightIntersect)
+    {
+        uint offset;
+        InterlockedAdd(lightCountInTile, 1, offset);
+        lightIndicesInTile[offset] = groupIndex;
+    }
+    
+    if (reflectionProbeIntersect)
+    {
+        uint offset2;
+        InterlockedAdd(reflectionProbeCountInTile, 1, offset2);
+        reflectionProbeIndicesInTile[offset2] = groupIndex;
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    // ------------------------- Recording light/reflection probe indices -------------------------
+    
+    uint lightHeaderIndex = (groupId.y * _TileParams.x + groupId.x) * (MAX_LIGHT_COUNT_PER_TILE + 1);
+    uint reflectionProbeHeaderIndex = (groupId.y * _TileParams.x + groupId.x) * (MAX_REFLECTION_PROBE_COUNT_PER_TILE + 1);
+    uint minLightCount = min(lightCountInTile, MAX_LIGHT_COUNT_PER_TILE);
+    uint minReflectionProbeCount = min(reflectionProbeCountInTile, MAX_REFLECTION_PROBE_COUNT_PER_TILE);
+
+    UNITY_BRANCH
+    if (groupIndex == 0)
+    {
+        _TilesLightIndicesBuffer[lightHeaderIndex] = lightCountInTile;
+        _TileReflectionProbeIndicesBuffer[reflectionProbeHeaderIndex] = reflectionProbeCountInTile;
+    }
+    else
+    {
+        if (groupIndex - 1 < minLightCount) _TilesLightIndicesBuffer[lightHeaderIndex + groupIndex] = lightIndicesInTile[groupIndex - 1];
+        if (groupIndex - 1 < minReflectionProbeCount) _TileReflectionProbeIndicesBuffer[reflectionProbeHeaderIndex + groupIndex] = reflectionProbeIndicesInTile[groupIndex - 1];
+    }
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Deprecated Intersect Test -- Sphere-Frustum Intersect Test, Cone Intersect Test, Spherical-Sliced Cone Test
+// ----------------------------------------------------------------------------------------------------
+
+// Caution: input param lightPositionVS.z should be negative(right-handed)
+// bool DepthIntersect(float3 lightPositionVS, float lightRange)
+// {
+//     float tileDepthMin = asfloat(tileMinDepthInt);
+//     float tileDepthMax = asfloat(tileMaxDepthInt);
+//
+//     float lightDepthMin = -lightPositionVS.z - lightRange;
+//     float lightDepthMax = -lightPositionVS.z + lightRange;
+//     
+//     return lightDepthMin <= tileDepthMax && lightDepthMax >= tileDepthMin;
+// }
+
+// Sphere-Frustum Intersect Test -- Only Suitable For Light Bounding Sphere
+
+// bool SidePlanesIntersect(float3 p1, float3 p2, float3 lightPositionVS, float lightRange)
+// {
+//     float3 N = -normalize(cross(p1, p2));
+//     float distance = dot(N, lightPositionVS);
+//     return distance < lightRange;
+// }
+//
+// bool SphereFrustumIntersectTest(uint lightIndex, uint2 tileIndex)
+// {
+//     UNITY_BRANCH
+//     if ((float) lightIndex >= GetPunctualLightCount())
+//     {
+//         return false;
+//     }
+//     else
+//     {
+//         float3 lightPositionVS = TransformWorldToView(GetPunctualLightPosition(lightIndex));
+//         float lightRange = GetPunctualLightRange(lightIndex);
+//
+//         float3 tileCorners[4];
+//         GetTileFrustumCorners(tileCorners, tileIndex, _CameraNearPlaneLB.xyz, _TileNearPlaneSize.xy);
+//
+//         bool sideIntersected0 = SidePlanesIntersect(tileCorners[0], tileCorners[1], lightPositionVS, lightRange);
+//         bool sideIntersected1 = SidePlanesIntersect(tileCorners[1], tileCorners[2], lightPositionVS, lightRange);
+//         bool sideIntersected2 = SidePlanesIntersect(tileCorners[2], tileCorners[3], lightPositionVS, lightRange);
+//         bool sideIntersected4 = SidePlanesIntersect(tileCorners[3], tileCorners[0], lightPositionVS, lightRange);
+//         return sideIntersected0 && sideIntersected1 && sideIntersected2 && sideIntersected4 && DepthIntersect(lightPositionVS, lightRange);
+//     }
+// }
+
+// Cone Intersect Test -- Only Suitable For Light Bounding Sphere
+// From https://lxjk.github.io/2018/03/25/Improve-Tile-based-Light-Culling-with-Spherical-sliced-Cone.html#_spherical_sliced_cone_test
+
+// bool TileLightConeIntersect(float3 tileCorners[4], float3 lightPositionVS, float lightRange)
+// {
+//     float3 tileCenterVec = normalize(tileCorners[0] + tileCorners[1] + tileCorners[2] + tileCorners[3]);
+//     float tileCos = min(min(min(dot(tileCenterVec, normalize(tileCorners[0])), dot(tileCenterVec, normalize(tileCorners[1]))), dot(tileCenterVec, normalize(tileCorners[2]))), dot(tileCenterVec, normalize(tileCorners[3])));
+//     float tileSin = sqrt(1 - tileCos * tileCos);
+//
+//     float lightDistSqr = dot(lightPositionVS, lightPositionVS);
+//     float lightDist = sqrt(lightDistSqr);
+//     float3 lightCenterVec = lightPositionVS / lightDist;
+//     float lightSin = clamp(lightRange / lightDist, 0.0, 1.0);
+//     float lightCos = sqrt(1 - lightSin * lightSin);
+//     
+//     float lightTileCos = dot(lightCenterVec, tileCenterVec);
+//     float sumCos = (lightRange > lightDist) ? -1.0 : (tileCos * lightCos - tileSin * lightSin);
+//
+//     return lightTileCos >= sumCos;
+// }
+//
+// bool ConeIntersectTest(uint lightIndex, uint2 tileIndex)
+// {
+//     UNITY_BRANCH
+//     if ((float) lightIndex >= GetPunctualLightCount())
+//     {
+//         return false;
+//     }
+//     else
+//     {
+//         float3 lightPositionVS = TransformWorldToView(GetPunctualLightPosition(lightIndex));
+//         float lightRange = GetPunctualLightRange(lightIndex);
+//         
+//         float3 tileCorners[4];
+//         GetTileFrustumCorners(tileCorners, tileIndex, _CameraNearPlaneLB.xyz, _TileNearPlaneSize.xy);
+//
+//         return TileLightConeIntersect(tileCorners, lightPositionVS, lightRange) && DepthIntersect(lightPositionVS, lightRange);
+//     }
+// }
+
+// Spherical-Sliced Cone Test -- Only Suitable For Light Bounding Sphere
+// Also From https://lxjk.github.io/2018/03/25/Improve-Tile-based-Light-Culling-with-Spherical-sliced-Cone.html#_spherical_sliced_cone_test
+
+// bool MinMaxDistanceIntersect(float3 tileCorners[4], float3 lightPositionVS, float lightRange)
+// {
+//     float3 tileCornerVec0 = normalize(tileCorners[0]);
+//     float3 tileCornerVec1 = normalize(tileCorners[1]);
+//     float3 tileCornerVec2 = normalize(tileCorners[2]);
+//     float3 tileCornerVec3 = normalize(tileCorners[3]);
+//
+//     float3 tileCenterVec = normalize(tileCornerVec0 + tileCornerVec1 + tileCornerVec2 + tileCornerVec3);
+//     float tileCos = min(min(min(dot(tileCenterVec, tileCornerVec0), dot(tileCenterVec, tileCornerVec1)), dot(tileCenterVec, tileCornerVec2)), dot(tileCenterVec, tileCornerVec3));
+//     float tileSin = sqrt(1 - tileCos * tileCos);
+//
+//     float lightDistSqr = dot(lightPositionVS, lightPositionVS);
+//     float lightDist = sqrt(lightDistSqr);
+//     float3 lightCenterVec = lightPositionVS / lightDist;
+//
+//     float lightTileCos = dot(lightCenterVec, tileCenterVec);
+//     float lightTileSin = sqrt(1 - lightTileCos * lightTileCos);
+//
+//     float diffSin = clamp(lightTileSin * tileCos - lightTileCos * tileSin, 0.0, 1.0);
+//     float diffCos = (diffSin == 0.0) ? 1.0 : lightTileCos * tileCos + lightTileSin * tileSin;
+//     float lightTileDistOffset = sqrt(lightRange * lightRange - lightDistSqr * diffSin * diffSin);
+//     float lightTileDistBase = lightDist * diffCos;
+//
+//     float tileDepthMin = asfloat(tileMinDepthInt);
+//     float tileDepthMax = asfloat(tileMaxDepthInt);
+//     float cosCornerMin = min(min(min(-tileCornerVec0.z, -tileCornerVec1.z), -tileCornerVec2.z), -tileCornerVec3.z);
+//     float cosCornerMax = max(max(max(-tileCornerVec0.z, -tileCornerVec1.z), -tileCornerVec2.z), -tileCornerVec3.z);
+//     float tileDistMin = tileDepthMin / cosCornerMax;
+//     float tileDistMax = tileDepthMax / cosCornerMin;
+//
+//     return lightTileDistBase - lightTileDistOffset < tileDistMax && lightTileDistBase + lightTileDistOffset > tileDistMin;
+// }
+//
+// bool SphericalSlicedConeIntersectTest(uint lightIndex, uint2 tileIndex)
+// {
+//     UNITY_BRANCH
+//     if ((float) lightIndex >= GetPunctualLightCount())
+//     {
+//         return false;
+//     }
+//     else
+//     {
+//         float3 lightPositionVS = TransformWorldToView(GetPunctualLightPosition(lightIndex));
+//         float lightRange = GetPunctualLightRange(lightIndex);
+//
+//         float3 tileCorners[4];
+//         GetTileFrustumCorners(tileCorners, tileIndex, _CameraNearPlaneLB.xyz, _TileNearPlaneSize.xy);
+//
+//         return MinMaxDistanceIntersect(tileCorners, lightPositionVS, lightRange);
+//     }
+// }

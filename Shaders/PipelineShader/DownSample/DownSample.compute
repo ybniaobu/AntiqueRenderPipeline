@@ -1,0 +1,135 @@
+#pragma kernel DownsampleKernel
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
+
+#pragma multi_compile _ _DEFERRED_RENDERING
+#pragma multi_compile _ _OUTPUT_MOTION_VECTOR
+#pragma multi_compile _ _OUTPUT_SCENE_HISTORY
+
+#include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
+
+#define CHECKERBOARD_DOWNSAMPLE 0
+#define MIN_DEPTH_DOWNSAMPLE 1
+#define MAX_DEPTH_DOWNSAMPLE 0
+
+Texture2D<float> _CameraDepthTexture;
+RWTexture2D<float> _HalfDepthTexture;
+
+#ifdef _DEFERRED_RENDERING
+TEXTURE2D(_GBuffer1);
+#define NORMAL_TEX _GBuffer1
+#else
+TEXTURE2D(_ThinGBuffer);
+#define NORMAL_TEX _ThinGBuffer
+#endif
+RWTexture2D<float4> _HalfNormalRoughnessTexture;
+
+#ifdef _OUTPUT_MOTION_VECTOR
+Texture2D<float2> _MotionVectorTexture;
+RWTexture2D<float2> _HalfMotionVectorTexture;
+#endif
+
+#ifdef _OUTPUT_SCENE_HISTORY
+Texture2D<float4> _SceneHistoryInput;
+RWTexture2D<float4> _HalfReprojectedSceneHistory;
+#endif
+
+SAMPLER(sampler_LinearClamp);
+SAMPLER(sampler_PointClamp);
+
+float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
+
+#if UNITY_REVERSED_Z
+#define MIN_DEPTH(A, B)         max((A), (B))
+#define MIN3_DEPTH(A, B, C)     Max3((A), (B), (C))
+#define MAX_DEPTH(A, B)         min((A), (B))
+#define MAX3_DEPTH(A, B, C)     Min3((A), (B), (C))
+#else
+#define MIN_DEPTH(A, B)         min((A), (B))
+#define MIN3_DEPTH(A, B, C)     Min3((A), (B), (C))
+#define MAX_DEPTH(A, B)         max((A), (B))
+#define MAX3_DEPTH(A, B, C)     Max3((A), (B), (C))
+#endif
+
+// Gather 的顺序和 UV 问题可以参考这篇文章：https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+float3 GetMinDepthOffset(float4 depths)
+{
+    float3 minDepthOffset = float3(0.0, 0.0, depths.w);
+    minDepthOffset = lerp(minDepthOffset, float3(1.0, 0.0, depths.z), COMPARE_DEVICE_DEPTH_CLOSER(depths.z, minDepthOffset.z));
+    minDepthOffset = lerp(minDepthOffset, float3(0.0, 1.0, depths.x), COMPARE_DEVICE_DEPTH_CLOSER(depths.x, minDepthOffset.z));
+    minDepthOffset = lerp(minDepthOffset, float3(1.0, 1.0, depths.y), COMPARE_DEVICE_DEPTH_CLOSER(depths.y, minDepthOffset.z));
+    return minDepthOffset;
+}
+
+float3 GetMaxDepthOffset(float4 depths)
+{
+    float3 maxDepthOffset = float3(0.0, 0.0, depths.w);
+    maxDepthOffset = lerp(maxDepthOffset, float3(1.0, 0.0, depths.z), COMPARE_DEVICE_DEPTH_CLOSER(maxDepthOffset.z, depths.z));
+    maxDepthOffset = lerp(maxDepthOffset, float3(0.0, 1.0, depths.x), COMPARE_DEVICE_DEPTH_CLOSER(maxDepthOffset.z, depths.x));
+    maxDepthOffset = lerp(maxDepthOffset, float3(1.0, 1.0, depths.y), COMPARE_DEVICE_DEPTH_CLOSER(maxDepthOffset.z, depths.y));
+    return maxDepthOffset;
+}
+
+float CheckerboardDepth(uint2 coord, float minDepth, float maxDepth)
+{
+    return ((coord.x ^ coord.y) & 1) ? minDepth : maxDepth;
+}
+
+float3 CheckerboardDepthOffset(uint2 coord, float3 minDepthOffset, float3 maxDepthOffset)
+{
+    return ((coord.x ^ coord.y) & 1) ? minDepthOffset : maxDepthOffset;
+}
+
+[numthreads(8, 8, 1)]
+void DownsampleKernel(uint3 id : SV_DispatchThreadID)
+{
+    float2 screenUV = (float2(id.xy) + float2(0.5, 0.5)) * _TextureSize.xy;
+    int2 halfPixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    int2 pixelCoord = halfPixelCoord * 2;
+    
+    #if CHECKERBOARD_DOWNSAMPLE
+    float4 depths = GATHER_RED_TEXTURE2D(_CameraDepthTexture, sampler_PointClamp, screenUV);
+    float3 minDepthOffset = GetMinDepthOffset(depths);
+    float3 maxDepthOffset = GetMaxDepthOffset(depths);
+    float3 depthOffset = CheckerboardDepthOffset(halfPixelCoord, minDepthOffset, maxDepthOffset);
+    #elif MIN_DEPTH_DOWNSAMPLE
+    float4 depths = GATHER_RED_TEXTURE2D(_CameraDepthTexture, sampler_PointClamp, screenUV);
+    float3 depthOffset = GetMinDepthOffset(depths);
+    #elif MAX_DEPTH_DOWNSAMPLE 
+    float4 depths = GATHER_RED_TEXTURE2D(_CameraDepthTexture, sampler_PointClamp, screenUV);
+    float3 depthOffset = GetMaxDepthOffset(depths);
+    #else
+    float depth = LOAD_TEXTURE2D_LOD(_CameraDepthTexture, pixelCoord, 0);
+    float3 depthOffset = float3(0.0, 0.0, depth);
+    #endif
+    
+    _HalfDepthTexture[id.xy] = depthOffset.z;
+    
+    float4 packedNormalAndRoughness = LOAD_TEXTURE2D_LOD(NORMAL_TEX, pixelCoord + int2(depthOffset.xy), 0);
+    _HalfNormalRoughnessTexture[id.xy] = packedNormalAndRoughness;
+    
+    #if defined(_OUTPUT_SCENE_HISTORY) || defined(_OUTPUT_MOTION_VECTOR)
+    float2 velocity = LOAD_TEXTURE2D_LOD(_MotionVectorTexture, pixelCoord + int2(depthOffset.xy), 0);
+    
+    #ifdef _OUTPUT_MOTION_VECTOR
+    _HalfMotionVectorTexture[id.xy] = velocity;
+    #endif
+    
+    #ifdef _OUTPUT_SCENE_HISTORY
+    float2 historyUV = screenUV - velocity;
+    
+    if (any(abs(historyUV - 0.5) > 0.5))
+    {
+        _HalfReprojectedSceneHistory[id.xy] = float4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
+    
+    float4 sceneColor = SAMPLE_TEXTURE2D_LOD(_SceneHistoryInput, sampler_LinearClamp, historyUV, 0);
+    
+    // TODO: 这里没有验证历史信息是不太好的，但是该 Pass 执行时还没有当前帧的颜色信息，所以只能使用几何信息拒绝错误历史信息
+    // 等 TAA 进一步优化后，再修改这里，使用上一帧深度值拒绝错误历史信息
+    
+    _HalfReprojectedSceneHistory[id.xy] = float4(sceneColor.rgb, 0.0);
+    #endif
+    #endif
+}

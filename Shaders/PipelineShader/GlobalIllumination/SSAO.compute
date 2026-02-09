@@ -1,0 +1,469 @@
+#pragma kernel SSAOKernel
+#pragma kernel HBAOKernel
+#pragma kernel GTAOKernel
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
+
+#pragma multi_compile _ _HALF_RESOLUTION
+#pragma multi_compile _ _DEFERRED_RENDERING
+
+#include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
+#include "../../ShaderLibrary/RandomLibrary.hlsl"
+#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+
+// --- Textures & Samplers ---
+RWTexture2D<float2> _OutputTexture;
+Texture2D<float2> _InputTexture;
+
+#ifdef _HALF_RESOLUTION
+    Texture2D<float> _HalfDepthTexture;
+    #define DEPTH_TEX _HalfDepthTexture
+    Texture2D<float4> _HalfNormalRoughnessTexture;
+    #define NORMAL_TEX _HalfNormalRoughnessTexture
+#else
+    TEXTURE2D(_CameraDepthTexture);
+    #define DEPTH_TEX _CameraDepthTexture
+    #ifdef _DEFERRED_RENDERING
+        TEXTURE2D(_GBuffer1);
+        #define NORMAL_TEX _GBuffer1
+    #else
+        TEXTURE2D(_ThinGBuffer);
+        #define NORMAL_TEX _ThinGBuffer
+    #endif
+#endif
+
+TEXTURE2D(_STBN128Scalar3);
+float4 _STBN128Scalar3_TexelSize;
+SAMPLER(sampler_LinearClamp);
+SAMPLER(sampler_PointClamp);
+
+// --- Global Variables ---
+float4 _CameraSettings; // x: vertical FOV in radian, y: cot(FOV/2)
+float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bufferSize.x, w: bufferSize.y
+float4 _Jitter; // Halton (-0.5, 0.5), xy: 1.0 / jitter, zw: jitter
+float4 _TimeParams; // x: frameCount, y: 1.0 / frameCount
+
+// --- Local Variables ---
+float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
+
+// SSAO - x: intensity, y: sample count, z: radius
+// HBAO - x: intensity, y: radius, z: direction count, w: step count
+// GTAO - x: intensity, y: radius, z: direction count, w: step count
+float4 _SSAOParams;
+int _TemporalDenoiseEnabled; // temporal denoise enabled (1 or 0)
+
+// ----------------------------------------------------------------------------------------------------
+// Input
+// ----------------------------------------------------------------------------------------------------
+
+inline float GetSSAOIntensity()                 { return _SSAOParams.x; }
+inline float GetSSAOSampleCount()               { return _SSAOParams.y; }
+inline float GetSSAORadius()                    { return _SSAOParams.z; }
+
+inline float GetHBAOIntensity()                 { return _SSAOParams.x; }
+inline float GetHBAORadius()                    { return _SSAOParams.y; }
+inline float GetHBAODirectionCount()            { return _SSAOParams.z; }
+inline float GetHBAOStepCount()                 { return _SSAOParams.w; }
+
+inline float GetGTAOIntensity()                 { return _SSAOParams.x; }
+inline float GetGTAORadius()                    { return _SSAOParams.y; }
+inline float GetGTAODirectionCount()            { return _SSAOParams.z; }
+inline float GetGTAOStepCount()                 { return _SSAOParams.w; }
+
+inline float IsTemporalDenoiseEnabled()            { return _TemporalDenoiseEnabled; }
+
+// ----------------------------------------------------------------------------------------------------
+// Utility Functions
+// ----------------------------------------------------------------------------------------------------
+
+float LoadDepth(int2 pixelCoord)
+{
+    return LOAD_TEXTURE2D_LOD(DEPTH_TEX, pixelCoord, 0).r;
+}
+
+float3 LoadAndDecodeNormal(int2 pixelCoord)
+{
+    float3 packedNormalWS = LOAD_TEXTURE2D_LOD(NORMAL_TEX, pixelCoord, 0).rgb;
+    return DecodeNormalFrom888(packedNormalWS);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// SSAO Functions & Kernel
+// ----------------------------------------------------------------------------------------------------
+
+// Left-handed Spherical and Cartesian Coordinate, Coordinate Convention Detail see SamplingLibrary.hlsl
+
+float3 GenerateHemisphereSamples(float2 xi, float scale)
+{
+    float phi = PI * (2.0 * xi.x - 1.0);
+    float cosTheta = 1 - xi.y;
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+    
+    // float r = scale * scale; // distribute more samples closer to the hemisphere origin
+    float r = scale;
+    return float3(r * sinTheta * cos(phi), r * cosTheta, r * sinTheta * sin(phi));
+}
+
+float3 GenerateCosineWeightedHemisphereSamples(float2 xi, float scale)
+{
+    float phi = PI * (2.0 * xi.x - 1.0);
+    float cosTheta = sqrt(1 - xi.y);
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+    
+    // float r = scale * scale; // distribute more samples closer to the hemisphere origin
+    float r = scale;
+    return float3(r * sinTheta * cos(phi), r * cosTheta, r * sinTheta * sin(phi));
+}
+
+[numthreads(8, 8, 1)]
+void SSAOKernel(uint3 id : SV_DispatchThreadID)
+{
+    uint2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 screenUV = (float2(pixelCoord) + float2(0.5, 0.5)) * _TextureSize.xy;
+    
+    // ------------------------- Get Origin Position -------------------------
+    
+    float originDepth = LoadDepth(pixelCoord);
+    float originLinearDepth = GetViewDepthFromDepthTexture(originDepth);
+    float4 originNDC = GetNDCFromUVAndDepth(screenUV, originDepth);
+    float3 originWS = TransformNDCToWorld(originNDC, UNITY_MATRIX_I_VP);
+
+    if (originDepth < 1e-7)
+    {
+        _OutputTexture[id.xy] = float2(1.0, originLinearDepth);
+        return;
+    }
+
+    // ------------------------- Get Normal & Build Left-Handed TBN -------------------------
+    
+    float3 normalWS = LoadAndDecodeNormal(pixelCoord); // N
+
+    float3 up = abs(normalWS.y) > 0.999 ? float3(0, 0, 1) : float3(0, 1, 0);
+    float3 tangent = normalize(cross(up, normalWS)); // T
+    float3 binormal = normalize(cross(tangent, normalWS)); // B
+
+    // ------------------------- Random Rotation -------------------------
+    
+    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
+    float2x2 rotation = float2x2(cos(randomRadian), -sin(randomRadian), sin(randomRadian), cos(randomRadian));
+    float2 offset = float2(noise.g + _Jitter.w * 0.11, noise.b + _Jitter.w * 0.23);
+
+    // ------------------------- SSAO Loop -------------------------
+    
+    float aoFactor = 0.0;
+    float intensity = GetSSAOIntensity();
+    float sampleCount = GetSSAOSampleCount();
+    float radius = GetSSAORadius();
+    
+    for (int i = 0; i < sampleCount; i++)
+    {
+        // ------------------------- Generate Hemisphere Samples -------------------------
+        
+        float2 xi = frac(k_Sobol[i + 1] + offset);
+        float scale = k_Halton[i + 1].y;
+        float3 dirTS = GenerateCosineWeightedHemisphereSamples(xi, scale);
+        dirTS.xz = mul(rotation, dirTS.xz);
+
+        // ------------------------- Sample Depth Buffer -------------------------
+        
+        float3 dirWS = tangent * dirTS.x + normalWS * dirTS.y + binormal * dirTS.z;
+        float3 sampleWS = originWS + dirWS * radius;
+        float4 sampleHCS = TransformWorldToHClip(sampleWS);
+        sampleHCS.xyz /= sampleHCS.w;
+        float2 uv = sampleHCS.xy * 0.5 + 0.5;
+
+        #if UNITY_UV_STARTS_AT_TOP
+        uv.y = 1.0f - uv.y;
+        #endif
+
+        int2 samplePixelCoord = clamp(uv * _TextureSize.zw, 0, _TextureSize.zw - 1);
+        float sampledDepth = LoadDepth(samplePixelCoord);
+        float linearDepth = GetViewDepthFromDepthTexture(sampledDepth);
+
+        // ------------------------- Accumulate Occlusion Factor -------------------------
+        
+        bool rangeCheck = abs(sampleHCS.w - linearDepth) < radius;
+        float occlusion = (linearDepth + 0.01 < sampleHCS.w) * rangeCheck * intensity;
+        aoFactor += 1.0 - occlusion;
+    }
+    
+    aoFactor = saturate(aoFactor / sampleCount);
+    _OutputTexture[id.xy] = float2(aoFactor, originLinearDepth);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// HBAO Functions & Kernel
+// Modified from: NVIDIA-Direct3D-SDK-11/SSAO11/NVSDK_D3D11_SSAO
+// ----------------------------------------------------------------------------------------------------
+
+#define HBAO_NUM_DIRECTIONS GetHBAODirectionCount()
+#define HBAO_NUM_STEPS GetHBAOStepCount()
+
+float3 FetchViewPosition(float2 screenUV, float rawDepth)
+{
+    float4 NDC = GetNDCFromUVAndDepth(screenUV, rawDepth);
+    float3 VS = TransformNDCToView(NDC, UNITY_MATRIX_I_P);
+    VS.z = -VS.z;
+    return VS;
+}
+
+float3 FetchViewNormal(float3 normalWS)
+{
+    float3 normalVS = TransformWorldToViewNormal(normalWS, true);
+    normalVS.z = -normalVS.z;
+    return normalVS;
+}
+
+inline float Falloff(float d2, float r2)
+{
+    return saturate(1.0 - d2 * rcp(r2));
+}
+
+[numthreads(8, 8, 1)]
+void HBAOKernel(uint3 id : SV_DispatchThreadID)
+{
+    uint2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 screenUV = (float2(pixelCoord) + float2(0.5, 0.5)) * _TextureSize.xy;
+
+    // ------------------------- Fetch Position & Normal -------------------------
+    
+    float rawDepth = LoadDepth(pixelCoord);
+    float3 P = FetchViewPosition(screenUV, rawDepth);
+    float3 V = normalize(-P);
+
+    float3 normalWS = LoadAndDecodeNormal(pixelCoord);
+    float3 normalVS = FetchViewNormal(normalWS);
+
+    // ------------------------- Calculate Step Size -------------------------
+
+    float radiusInUV = 0.5 * GetHBAORadius() * _CameraSettings.y / P.z;
+    float radiusInPixel = min(radiusInUV * _TextureSize.w, 0.2 * _TextureSize.w);
+    
+    if (radiusInPixel < 1 || rawDepth < 1e-7)
+    {
+        _OutputTexture[id.xy] = float2(1.0, P.z);
+        return;
+    }
+
+    // Avoid oversampling if NUM_STEPS is greater than the kernel radius in pixels
+    float numSteps = min(HBAO_NUM_STEPS, radiusInPixel);
+    float stepSizeInPixel = radiusInPixel / numSteps;
+    
+    // ------------------------- HBAO Loop -------------------------
+    
+    float ao = 0;
+    float phi = TWO_PI / HBAO_NUM_DIRECTIONS;
+    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
+    float randomOffset = frac(noise.b + (_Jitter.w + 0.5) * IsTemporalDenoiseEnabled());
+    float r2 = GetHBAORadius() * GetHBAORadius();
+    
+    for (int d = 0; d < HBAO_NUM_DIRECTIONS; ++d)
+    {
+        // ------------------------- Randomize Direction -------------------------
+        
+        float angle = phi * d + randomRadian;
+        float2 sliceDir = float2(cos(angle), sin(angle));
+        float2 pixelDelta = sliceDir * stepSizeInPixel;
+
+        // ------------------------- Apply Random Offset -------------------------
+        
+        float2 sampleCoord = id.xy + randomOffset * pixelDelta;
+
+        // ------------------------- Calculate SinT -------------------------
+        
+        float3 sliceNormal = normalize(cross(float3(sliceDir, 0), V));
+        float3 T = normalize(cross(normalVS, sliceNormal));
+        float sinT = -T.z;
+        float lastSinH = sinT;
+        
+        for (float j = 0; j < numSteps; ++j)
+        {
+            // ------------------------- Fetch Sample Position -------------------------
+            
+            float2 sampleUV = (sampleCoord + 0.5) * _TextureSize.xy;
+            if (sampleUV.x <= 0 || sampleUV.y <= 0 || sampleUV.x >= 1 || sampleUV.y >= 1) break;
+            float sampleDepth = LoadDepth(sampleCoord);
+            float3 S = FetchViewPosition(sampleUV, sampleDepth);
+            float d2 = Length2(S - P);
+
+            // ------------------------- Calculate SinH -------------------------
+            
+            float3 H = (S - P) * rsqrt(d2);
+            float sinH = -H.z;
+
+            // ------------------------- Per-Sample Attenuation -------------------------
+            
+            [branch]
+            if (d2 < r2 && sinH > lastSinH)
+            {
+                ao += Falloff(d2, r2) * (sinH - lastSinH);
+                lastSinH = sinH;
+            }
+        
+            sampleCoord += pixelDelta;
+        }
+    }
+
+    ao = saturate(1 - ao * rcp(HBAO_NUM_DIRECTIONS) * GetHBAOIntensity());
+    _OutputTexture[id.xy] = float2(ao, P.z);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// GTAO Functions & Kernel
+// ----------------------------------------------------------------------------------------------------
+
+#define GTAO_NUM_DIRECTIONS GetGTAODirectionCount() 
+#define GTAO_NUM_STEPS GetGTAOStepCount()
+
+float GTAOFastAcos(float x)
+{
+    float res = -0.156583 * abs(x) + HALF_PI;
+    res *= sqrt(1.0 - abs(x));
+    return x >= 0 ? res : PI - res;
+}
+
+float2 GTAOFastAcos(float2 x)
+{
+    float2 res = -0.156583 * abs(x) + HALF_PI;
+    res *= sqrt(1.0 - abs(x));
+    return x >= 0 ? res : PI - res;
+}
+
+float IntegrateArcUniformWeight(float2 h)
+{
+    float2 arc = 1 - cos(h);
+    return arc.x + arc.y;
+}
+
+float IntegrateArcCosWeight(float2 h, float n)
+{
+    float2 arc = -cos(2 * h - n) + cos(n) + 2 * h * sin(n);
+    return 0.25 * (arc.x + arc.y);
+}
+
+[numthreads(8, 8, 1)]
+void GTAOKernel(uint3 id : SV_DispatchThreadID)
+{
+    uint2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 screenUV = (float2(pixelCoord) + float2(0.5, 0.5)) * _TextureSize.xy;
+
+    // ------------------------- Fetch Position & Normal -------------------------
+    
+    float rawDepth = LoadDepth(pixelCoord);
+    float3 positionVS = FetchViewPosition(screenUV, rawDepth);
+    float3 viewDir = normalize(-positionVS);
+
+    float3 normalWS = LoadAndDecodeNormal(pixelCoord);
+    float3 normalVS = FetchViewNormal(normalWS);
+
+    // ------------------------- Calculate Step Size -------------------------
+    
+    float radiusInUV = 0.5 * GetGTAORadius() * _CameraSettings.y / positionVS.z;
+    float radiusInPixel = min(radiusInUV * _TextureSize.w, 0.2 * _TextureSize.w);
+
+    if (radiusInPixel < 1 || rawDepth < 1e-7)
+    {
+        _OutputTexture[id.xy] = float2(1.0, positionVS.z);
+        return;
+    }
+
+    // Avoid oversampling if NUM_STEPS is greater than the kernel radius in pixels
+    float numSteps = min(GTAO_NUM_STEPS, radiusInPixel);
+    float stepSizeInPixel = radiusInPixel / numSteps;
+
+    // ------------------------- Noise -------------------------
+
+    // float noise = (1.0 / 16.0) * ((((id.x + id.y) & 0x3) << 2) + ((id.x) & 0x3));
+    // const float rotations[] = {60.0, 300.0, 180.0, 240.0, 120.0, 0.0};
+    // float rotation = rotations[_TimeParams.x % 6] / 360.0;
+    // float randomRadian = (noise + rotation * IsTemporalBlurEnabled()) * TWO_PI;
+    //
+    // float noise2 = 0.25 * ((id.y - id.x) & 0x3);
+    // const float offsets[] = {0.0, 0.5, 0.25, 0.75};
+    // float offset = offsets[(_TimeParams.x / 6) % 4];
+    // float randomOffset = frac(noise2 + offset * IsTemporalBlurEnabled());
+    
+    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
+    float randomOffset = frac(noise.g + (_Jitter.w + 0.5) * IsTemporalDenoiseEnabled()); // randomOffset 接近于 0 会产生小黑点
+
+    // ------------------------- Direction Loop -------------------------
+
+    float ao = 0;
+    float phi = PI / GTAO_NUM_DIRECTIONS;
+    float r2 = GetGTAORadius() * GetGTAORadius();
+    
+    for (int d = 0; d < GTAO_NUM_DIRECTIONS; d++)
+    {
+        // ------------------------- Randomize Direction -------------------------
+        
+        float angle = phi * d + randomRadian;
+        float3 sliceDir = float3(cos(angle), sin(angle), 0);
+        float2 pixelDelta = sliceDir.xy * stepSizeInPixel;
+
+        // ------------------------- Slice Loop -------------------------
+        
+        float2 maxCosH = -1.0; // cos(pi)
+        
+        for (int s = 0; s < numSteps; s++)
+        {
+            // ------------------------- Apply Random Offset -------------------------
+            
+            float2 offset = (randomOffset + s) * pixelDelta;
+            float4 sampleCoord = clamp(id.xyxy + float4(-offset, offset), 0, _TextureSize.zwzw - 1);
+            float4 sampleUV = (sampleCoord + 0.5) * _TextureSize.xyxy;
+
+            // ------------------------- Calculate CosH -------------------------
+            
+            float sh1Depth = LoadDepth(sampleCoord.xy);
+            float sh2Depth = LoadDepth(sampleCoord.zw);
+            float3 sh1 = FetchViewPosition(sampleUV.xy, sh1Depth) - positionVS; // H1
+            float3 sh2 = FetchViewPosition(sampleUV.zw, sh2Depth) - positionVS; // H2
+            float2 length2 = float2(dot(sh1, sh1), dot(sh2, sh2));
+            float2 cosH = float2(dot(sh1, viewDir), dot(sh2, viewDir)) * rsqrt(length2);
+
+            // ------------------------- Max Horizon Angle -------------------------
+            
+            // maxCosH = lerp(maxCosH, max(cosH, maxCosH), length2 < r2);
+            
+            // ------------------------- Thickness Heuristic -------------------------
+            // 注：距离衰减函数最好乘以最终 AO 值，而不是这里的 cosH 值。这里应用距离衰减函数 AO 效果会有点奇怪
+            // 考虑更改：我觉得将 GTAO 修改为 HBAO 的方法比较好，一个 slice 不是半圆而是扇形，这样子方便应用距离衰减函数
+            
+            // float2 falloff = saturate(1.0 - length2 * rcp(r2));
+            if (length2.x < r2)
+            {
+                maxCosH.x = (cosH.x > maxCosH.x) ? max(cosH.x, maxCosH.x) : lerp(maxCosH.x, cosH.x, 0.02);
+                // maxCosH.x = (cosH.x > maxCosH.x) ? lerp(maxCosH.x, cosH.x, falloff.x) : lerp(maxCosH.x, cosH.x, 0.02);
+            }
+            if (length2.y < r2)
+            {
+                maxCosH.y = (cosH.y > maxCosH.y) ? max(cosH.y, maxCosH.y) : lerp(maxCosH.y, cosH.y, 0.02);
+                // maxCosH.y = (cosH.y > maxCosH.y) ? lerp(maxCosH.y, cosH.y, falloff.y) : lerp(maxCosH.y, cosH.y, 0.02);
+            }
+        }
+
+        // ------------------------- Normal Projection -------------------------
+        
+        float3 sliceNormal = normalize(cross(sliceDir, viewDir));
+        float3 realTangent = cross(normalVS, sliceNormal);
+        float3 projectedNormal = normalVS - sliceNormal * dot(normalVS, sliceNormal);
+        float projectedNormalLength = length(projectedNormal);
+
+        // ------------------------- Calculate AO  -------------------------
+        
+        float cosN = clamp(dot(projectedNormal / projectedNormalLength, viewDir), -1.0, 1.0);
+        float n = -sign(dot(viewDir, realTangent)) * GTAOFastAcos(cosN);
+        
+        float2 h = GTAOFastAcos(maxCosH);
+        h.x = n + max(-h.x - n, -HALF_PI); // H1
+        h.y = n + min(h.y - n, HALF_PI); // H2
+
+        ao += projectedNormalLength * IntegrateArcCosWeight(h, n);
+    }
+
+    ao = pow(saturate(ao / GTAO_NUM_DIRECTIONS), GetGTAOIntensity());
+    _OutputTexture[id.xy] = float2(ao, positionVS.z);
+}

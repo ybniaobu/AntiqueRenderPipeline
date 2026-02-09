@@ -1,0 +1,304 @@
+#pragma kernel TemporalDenoiseKernel
+#pragma kernel BilateralDenoiseHorizontalKernel
+#pragma kernel BilateralDenoiseVerticalKernel
+#pragma kernel UpsampleKernel
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+
+#pragma multi_compile _ _HALF_RESOLUTION
+#pragma multi_compile _ _DEFERRED_RENDERING
+
+#include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
+#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+#include "DenoiseLibrary.hlsl"
+#include "UpsampleLibrary.hlsl"
+
+// --- Textures & Samplers ---
+RWTexture2D<float2> _OutputTexture;
+Texture2D<float2> _InputTexture;
+Texture2D<float2> _AmbientOcclusionHistory;
+
+#ifdef _HALF_RESOLUTION
+Texture2D<float4> _HalfNormalRoughnessTexture;
+#define NORMAL_TEX _HalfNormalRoughnessTexture
+Texture2D<float2> _HalfMotionVectorTexture;
+#define MOTION_TEX _HalfMotionVectorTexture
+#else
+#ifdef _DEFERRED_RENDERING
+TEXTURE2D(_GBuffer1);
+#define NORMAL_TEX _GBuffer1
+#else
+TEXTURE2D(_ThinGBuffer);
+#define NORMAL_TEX _ThinGBuffer
+#endif
+TEXTURE2D(_MotionVectorTexture);
+#define MOTION_TEX _MotionVectorTexture
+#endif
+
+TEXTURE2D(_CameraDepthTexture);
+SAMPLER(sampler_LinearClamp);
+SAMPLER(sampler_PointClamp);
+
+// --- Spatial Denoise Groupshared Memory ---
+#define MAX_FILTER_RADIUS 16
+groupshared float2 _AOAndDepth[64 + 2 * MAX_FILTER_RADIUS];
+groupshared float4 _Normal[64 + 2 * MAX_FILTER_RADIUS];
+
+// --- Temporal Denoise Groupshared Memory ---
+static const uint THREAD_NUM = 8;
+static const uint TILE_BORDER = 1;
+static const uint TILE_SIZE = THREAD_NUM + 2 * TILE_BORDER;
+groupshared float2 _AOZ[TILE_SIZE * TILE_SIZE];
+
+// --- Global Variables ---
+float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bufferSize.x, w: bufferSize.y
+
+// --- Local Variables ---
+float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
+float4 _SSAODenoiseParams; // x: kernel radius, y: sigma, z: depth threshold, w: variance critical value
+
+// ----------------------------------------------------------------------------------------------------
+// Input
+// ----------------------------------------------------------------------------------------------------
+
+inline float GetKernelRadius()      { return _SSAODenoiseParams.x; }
+inline float GetSigma()             { return _SSAODenoiseParams.y; }
+inline float GetDepthThreshold()    { return _SSAODenoiseParams.z; }
+inline float GetCriticalValue()     { return _SSAODenoiseParams.w; }
+
+// ----------------------------------------------------------------------------------------------------
+// Upsample Kernel
+// ----------------------------------------------------------------------------------------------------
+
+[numthreads(8, 8, 1)]
+void UpsampleKernel(uint3 id : SV_DispatchThreadID)
+{
+    float2 screenUV = (float2(id.xy) + float2(0.5, 0.5)) * _CameraBufferSize.xy;
+    int2 pixelCoord = clamp(id.xy, 0, _CameraBufferSize.zw - 1);
+
+    // ------------------------- Fetch AO & Depth -------------------------
+    
+    float fullDepth = LOAD_TEXTURE2D_LOD(_CameraDepthTexture, pixelCoord, 0).r;
+    fullDepth = GetViewDepthFromDepthTexture(fullDepth);
+    
+    float4 halfDepths = GATHER_GREEN_TEXTURE2D(_InputTexture, sampler_PointClamp, screenUV);
+    float4 aos = GATHER_RED_TEXTURE2D(_InputTexture, sampler_PointClamp, screenUV);
+
+    // ------------------------- Depth-Aware Upsample -------------------------
+    
+    int xEven = 1 - pixelCoord.x & 1;
+    int yEven = 1 - pixelCoord.y & 1;
+    int orderIndex = yEven * 2 + xEven;
+    float ao = DepthAwareBilateralUpsample(GetDepthThreshold(), fullDepth, halfDepths, aos, orderIndex);
+    // float ao = NearestDepthUpsample(fullDepth, halfDepths, aos);
+    // float ao = DepthAwareBilateralUpsample_Uniform(GetDepthThreshold(), fullDepth, halfDepths, aos);
+    _OutputTexture[id.xy] = float2(ao, fullDepth);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Bilateral Denoise Kernel
+// ----------------------------------------------------------------------------------------------------
+
+inline float2 LoadAOandDepth(int2 pixelCoord)
+{
+    return LOAD_TEXTURE2D_LOD(_InputTexture, pixelCoord, 0).rg;
+}
+
+inline float3 LoadAndDecodeNormal(int2 pixelCoord)
+{
+    float3 packedNormalWS = LOAD_TEXTURE2D_LOD(NORMAL_TEX, pixelCoord, 0).rgb;
+    return DecodeNormalFrom888(packedNormalWS);
+}
+
+[numthreads(64, 1, 1)]
+void BilateralDenoiseHorizontalKernel(uint3 id : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
+{
+    // ------------------------- Fetch AO & Depth -------------------------
+
+    int2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 aoAndDepth = LoadAOandDepth(pixelCoord);
+    float3 normal = LoadAndDecodeNormal(pixelCoord);
+    _AOAndDepth[groupIndex + MAX_FILTER_RADIUS] = aoAndDepth;
+    _Normal[groupIndex + MAX_FILTER_RADIUS] = float4(normal, 0.0);
+
+    if (groupIndex < MAX_FILTER_RADIUS)
+    {
+        int2 extraCoord = pixelCoord - int2(MAX_FILTER_RADIUS, 0);
+        extraCoord = clamp(extraCoord, 0, _TextureSize.zw - 1);
+        float2 extraAOAndDepth = LoadAOandDepth(extraCoord);
+        float3 extraNormal = LoadAndDecodeNormal(extraCoord);
+        _AOAndDepth[groupIndex] = extraAOAndDepth;
+        _Normal[groupIndex] = float4(extraNormal, 0.0);
+    }
+
+    if (groupIndex >= 64 - MAX_FILTER_RADIUS)
+    {
+        int2 extraCoord = pixelCoord + int2(MAX_FILTER_RADIUS, 0);
+        extraCoord = clamp(extraCoord, 0, _TextureSize.zw - 1);
+        float2 extraAOAndDepth = LoadAOandDepth(extraCoord);
+        float3 extraNormal = LoadAndDecodeNormal(extraCoord);
+        _AOAndDepth[groupIndex + 2 * MAX_FILTER_RADIUS] = extraAOAndDepth;
+        _Normal[groupIndex + 2 * MAX_FILTER_RADIUS] = float4(extraNormal, 0.0);
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    // ------------------------- Bilateral Blur -------------------------
+
+    float2 middle = _AOAndDepth[groupIndex + MAX_FILTER_RADIUS];
+    float3 middleNormal = _Normal[groupIndex + MAX_FILTER_RADIUS].xyz;
+    float weightSum = 0.0;
+    float ao = 0.0;
+        
+    int radius = int(GetKernelRadius());
+    for (int i = -radius; i <= radius; i++)
+    {
+        float2 sample = _AOAndDepth[groupIndex + MAX_FILTER_RADIUS + i];
+        float3 sampleNormal = _Normal[groupIndex + MAX_FILTER_RADIUS + i].xyz;
+        float weight = BilateralWeight(i, sample.g, middle.g, GetSigma(), GetDepthThreshold());
+        weight *= NormalWeight(sampleNormal, middleNormal);
+        ao += sample.r * weight;
+        weightSum += weight;
+    }
+    ao /= weightSum;
+    _OutputTexture[id.xy] = float2(ao, middle.g);
+}
+
+[numthreads(1, 64, 1)]
+void BilateralDenoiseVerticalKernel(uint3 id : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
+{
+    // ------------------------- Fetch AO & Depth -------------------------
+    
+    int2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 aoAndDepth = LoadAOandDepth(pixelCoord);
+    float3 normal = LoadAndDecodeNormal(pixelCoord);
+    _AOAndDepth[groupIndex + MAX_FILTER_RADIUS] = aoAndDepth;
+    _Normal[groupIndex + MAX_FILTER_RADIUS] = float4(normal, 0.0);
+
+    if (groupIndex < MAX_FILTER_RADIUS)
+    {
+        int2 extraCoord = pixelCoord - int2(0, MAX_FILTER_RADIUS);
+        extraCoord = clamp(extraCoord, 0, _TextureSize.zw - 1);
+        float2 extraAOAndDepth = LoadAOandDepth(extraCoord);
+        float3 extraNormal = LoadAndDecodeNormal(extraCoord);
+        _AOAndDepth[groupIndex] = extraAOAndDepth;
+        _Normal[groupIndex] = float4(extraNormal, 0.0);
+    }
+
+    if (groupIndex >= 64 - MAX_FILTER_RADIUS)
+    {
+        int2 extraCoord = pixelCoord + int2(0, MAX_FILTER_RADIUS);
+        extraCoord = clamp(extraCoord, 0, _TextureSize.zw - 1);
+        float2 extraAOAndDepth = LoadAOandDepth(extraCoord);
+        float3 extraNormal = LoadAndDecodeNormal(extraCoord);
+        _AOAndDepth[groupIndex + 2 * MAX_FILTER_RADIUS] = extraAOAndDepth;
+        _Normal[groupIndex + 2 * MAX_FILTER_RADIUS] = float4(extraNormal, 0.0);
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    // ------------------------- Bilateral Blur -------------------------
+
+    float2 middle = _AOAndDepth[groupIndex + MAX_FILTER_RADIUS];
+    float3 middleNormal = _Normal[groupIndex + MAX_FILTER_RADIUS].xyz;
+    float weightSum = 0.0;
+    float ao = 0.0;
+        
+    int radius = int(GetKernelRadius());
+    for (int i = -radius; i <= radius; i++)
+    {
+        float2 sample = _AOAndDepth[groupIndex + MAX_FILTER_RADIUS + i];
+        float3 sampleNormal = _Normal[groupIndex + MAX_FILTER_RADIUS + i].xyz;
+        float weight = BilateralWeight(i, sample.g, middle.g, GetSigma(), GetDepthThreshold());
+        weight *= NormalWeight(sampleNormal, middleNormal);
+        ao += sample.r * weight;
+        weightSum += weight;
+    }
+    ao /= weightSum;
+    _OutputTexture[id.xy] = float2(ao, middle.g);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Temporal Denoise Functions & Kernel
+// ----------------------------------------------------------------------------------------------------
+
+inline void GetNeighbourhoodTileIDs(uint2 middleTileID, inout uint tileIDs[9])
+{
+    tileIDs[0] = (middleTileID.y     ) * TILE_SIZE + (middleTileID.x     );
+    tileIDs[1] = (middleTileID.y +  0) * TILE_SIZE + (middleTileID.x +  1);
+    tileIDs[2] = (middleTileID.y +  1) * TILE_SIZE + (middleTileID.x +  0);
+    tileIDs[3] = (middleTileID.y +  0) * TILE_SIZE + (middleTileID.x + -1);
+    tileIDs[4] = (middleTileID.y + -1) * TILE_SIZE + (middleTileID.x +  0);
+    tileIDs[5] = (middleTileID.y +  1) * TILE_SIZE + (middleTileID.x + -1);
+    tileIDs[6] = (middleTileID.y +  1) * TILE_SIZE + (middleTileID.x +  1);
+    tileIDs[7] = (middleTileID.y + -1) * TILE_SIZE + (middleTileID.x + -1);
+    tileIDs[8] = (middleTileID.y + -1) * TILE_SIZE + (middleTileID.x +  1);
+}
+
+inline void GetNeighbourhoodSamples(in uint tileIDs[9], inout float2 samples[9])
+{
+    samples[0] = _AOZ[tileIDs[0]];
+    samples[1] = _AOZ[tileIDs[1]];
+    samples[2] = _AOZ[tileIDs[2]];
+    samples[3] = _AOZ[tileIDs[3]];
+    samples[4] = _AOZ[tileIDs[4]];
+    samples[5] = _AOZ[tileIDs[5]];
+    samples[6] = _AOZ[tileIDs[6]];
+    samples[7] = _AOZ[tileIDs[7]];
+    samples[8] = _AOZ[tileIDs[8]];
+}
+
+[numthreads(THREAD_NUM, THREAD_NUM, 1)]
+void TemporalDenoiseKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadID, uint3 groupId : SV_GroupID, uint groupIndex : SV_GroupIndex)
+{
+    // ------------------------- Fetch AO & Depth -------------------------
+
+    int2 tileTopLeftCoord = groupId.xy * THREAD_NUM - TILE_BORDER;
+
+    UNITY_UNROLL
+    for (uint i = groupIndex; i < TILE_SIZE * TILE_SIZE; i += THREAD_NUM * THREAD_NUM)
+    {
+        int2 coord = tileTopLeftCoord + int2(i % TILE_SIZE, i / TILE_SIZE);
+        coord = clamp(coord, 0, _TextureSize.zw - 1);
+        _AOZ[i] = LoadAOandDepth(coord);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // ------------------------- Fetch Neighbourhood Samples -------------------------
+    
+    uint2 middleTileID = groupThreadId.xy + TILE_BORDER;
+    uint tileIDs[9];
+    GetNeighbourhoodTileIDs(middleTileID, tileIDs);
+    float2 neighbours[9];
+    GetNeighbourhoodSamples(tileIDs, neighbours);
+    
+    // ------------------------- Reprojection -------------------------
+    
+    float2 screenUV = (float2(id.xy) + float2(0.5, 0.5)) * _TextureSize.xy;
+    float2 velocity = SAMPLE_TEXTURE2D_LOD(MOTION_TEX, sampler_PointClamp, screenUV, 0).rg;
+    float2 historyUV = screenUV - velocity;
+    float2 history = SAMPLE_TEXTURE2D_LOD(_AmbientOcclusionHistory, sampler_LinearClamp, historyUV, 0);
+
+    // ------------------------- History Clamping -------------------------
+    
+    float prefiltered = BilateralFilterAO(neighbours, GetDepthThreshold());
+    
+    float gamma = GetCriticalValue();
+    float velocityFactor = saturate(length(velocity) * unity_DeltaTime.y * 2.0);
+    gamma = lerp(gamma + 0.5, max(gamma - 0.5, 0.1), velocityFactor);
+    float2 minMax = VarianceMinMax(neighbours, gamma, prefiltered);
+    history.r = clamp(history.r, minMax.x, minMax.y);
+
+    // ------------------------- Adaptive Blending Factor -------------------------
+    
+    float blendFactor = lerp(0.95, 0.85, velocityFactor); // Velocity Test
+    
+    float middleDepth = neighbours[0].g;
+    float historyDepth = history.g;
+    bool depthTest = abs(1 - middleDepth / historyDepth) < GetDepthThreshold();
+    blendFactor = lerp(0, blendFactor, depthTest); // Depth Test
+    blendFactor = lerp(blendFactor, 0, any(abs(historyUV - 0.5) > 0.5)); // Off-Screen Test
+    
+    _OutputTexture[id.xy] = float2(lerp(prefiltered, history.r, blendFactor), middleDepth);
+}
