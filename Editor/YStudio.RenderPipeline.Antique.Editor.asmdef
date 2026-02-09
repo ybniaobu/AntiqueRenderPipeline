@@ -1,0 +1,23 @@
+{
+    "name": "YStudio.RenderPipeline.Antique.Editor",
+    "rootNamespace": "YPipeline.Editor",
+    "references": [
+        "GUID:df380645f10b7bc4b97d4f5eb6303d95",
+        "GUID:69257879134bba646869b21467b3338d",
+        "GUID:3eae0364be2026648bf74846acb8a731",
+        "GUID:2a69708d171a17043a9d0ad45f205cfe",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:70af6cf011f65174a9f4431b075b4fbb"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

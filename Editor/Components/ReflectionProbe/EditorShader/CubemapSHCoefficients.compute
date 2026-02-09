@@ -1,0 +1,176 @@
+#pragma kernel ComputeCubemapSHKernel
+#pragma kernel SecondAddReductionKernel
+
+#define THREAD_NUM_X 8
+#define THREAD_NUM_Y 8
+#define THREAD_NUM THREAD_NUM_X * THREAD_NUM_Y
+#define SH_BASIS_COUNT 9
+
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "../../../../Shaders/ShaderLibrary/SphericalHarmonicsLibrary.hlsl"
+
+TextureCube<float4> _Cubemap;
+StructuredBuffer<float4> _Input;
+RWStructuredBuffer<float4> _Result;
+SAMPLER(sampler_PointClamp);
+
+float4 _Params; // x: cubemap size
+
+groupshared float4 sharedMem[THREAD_NUM * SH_BASIS_COUNT];
+
+// From https://www.rorydriscoll.com/2012/01/15/cubemap-texel-solid-angle/
+inline float AreaSolidAngle(float x, float y)
+{
+    return atan2(x * y, sqrt(x * x + y * y + 1.0));
+}
+
+float TexelCoordSolidAngle(float2 remappedUV, float invSize)
+{
+    // U and V are the -1..1 texture coordinate on the current face.
+    float x0 = remappedUV.x - invSize;
+    float y0 = remappedUV.y - invSize;
+    float x1 = remappedUV.x + invSize;
+    float y1 = remappedUV.y + invSize;
+    float SolidAngle = AreaSolidAngle(x0, y0) - AreaSolidAngle(x0, y1) - AreaSolidAngle(x1, y0) + AreaSolidAngle(x1, y1);
+    return SolidAngle;
+}
+
+float3 DispatchThreadIDToDir(int3 id, out float2 remappedUV, out float invSize)
+{
+    invSize = 1.0 / _Params.x;
+    remappedUV = 2.0 * (float2(id.xy) + 0.5) * invSize - 1.0;
+    
+    switch (id.z)
+    {
+        case CUBEMAPFACE_POSITIVE_X: 
+            return float3(1.0, remappedUV.y, -remappedUV.x);
+        case CUBEMAPFACE_NEGATIVE_X:
+            return float3(-1.0, remappedUV.y, remappedUV.x);
+        case CUBEMAPFACE_POSITIVE_Y:
+            return float3(remappedUV.x, 1.0, -remappedUV.y);
+        case CUBEMAPFACE_NEGATIVE_Y:
+            return float3(remappedUV.x, -1.0, remappedUV.y);
+        case CUBEMAPFACE_POSITIVE_Z:
+            return float3(remappedUV.x, remappedUV.y, 1.0);
+        case CUBEMAPFACE_NEGATIVE_Z:
+            return float3(-remappedUV.x, remappedUV.y, -1.0);
+        default:
+            return float3(1, 0, 0);
+    }
+}
+
+[numthreads(THREAD_NUM_X, THREAD_NUM_Y, 1)]
+void ComputeCubemapSHKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadID, uint3 groupId : SV_GroupID, uint groupIndex : SV_GroupIndex)
+{
+    float invSize;
+    float2 remappedUV;
+    float3 dir = DispatchThreadIDToDir(id, remappedUV, invSize);
+    float4 radiance = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_PointClamp, dir, 0);
+    float dSolidAngle = TexelCoordSolidAngle(remappedUV, invSize);
+    
+    float3 normalizedDir = normalize(dir);
+    float SHFunctions[9];
+    InitializeSHFunctions(normalizedDir, SHFunctions);
+    
+    uint index = groupIndex * SH_BASIS_COUNT;
+    sharedMem[index + 0] = radiance * SHFunctions[0] * dSolidAngle;
+    sharedMem[index + 1] = radiance * SHFunctions[1] * dSolidAngle;
+    sharedMem[index + 2] = radiance * SHFunctions[2] * dSolidAngle;
+    sharedMem[index + 3] = radiance * SHFunctions[3] * dSolidAngle;
+    sharedMem[index + 4] = radiance * SHFunctions[4] * dSolidAngle;
+    sharedMem[index + 5] = radiance * SHFunctions[5] * dSolidAngle;
+    sharedMem[index + 6] = radiance * SHFunctions[6] * dSolidAngle;
+    sharedMem[index + 7] = radiance * SHFunctions[7] * dSolidAngle;
+    sharedMem[index + 8] = radiance * SHFunctions[8] * dSolidAngle;
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    // do reduction in shared mem
+    // From https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
+    for (uint s = THREAD_NUM / 2; s > 0; s >>= 1)
+    {
+        if (groupIndex < s)
+        {
+            uint index2 = (groupIndex + s) * SH_BASIS_COUNT;
+            sharedMem[index + 0] += sharedMem[index2 + 0];
+            sharedMem[index + 1] += sharedMem[index2 + 1];
+            sharedMem[index + 2] += sharedMem[index2 + 2];
+            sharedMem[index + 3] += sharedMem[index2 + 3];
+            sharedMem[index + 4] += sharedMem[index2 + 4];
+            sharedMem[index + 5] += sharedMem[index2 + 5];
+            sharedMem[index + 6] += sharedMem[index2 + 6];
+            sharedMem[index + 7] += sharedMem[index2 + 7];
+            sharedMem[index + 8] += sharedMem[index2 + 8];
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    
+    if (groupIndex == 0)
+    {
+        uint groupCountX = uint(_Params.x) / THREAD_NUM_X;
+        uint groupCountY = uint(_Params.x) / THREAD_NUM_Y;
+        uint outputIndex = (groupId.z * groupCountX * groupCountY + groupId.y * groupCountX + groupId.x) * SH_BASIS_COUNT;
+        _Result[outputIndex + 0] = sharedMem[0];
+        _Result[outputIndex + 1] = sharedMem[1];
+        _Result[outputIndex + 2] = sharedMem[2];
+        _Result[outputIndex + 3] = sharedMem[3];
+        _Result[outputIndex + 4] = sharedMem[4];
+        _Result[outputIndex + 5] = sharedMem[5];
+        _Result[outputIndex + 6] = sharedMem[6];
+        _Result[outputIndex + 7] = sharedMem[7];
+        _Result[outputIndex + 8] = sharedMem[8];
+    }
+}
+
+[numthreads(THREAD_NUM_X, THREAD_NUM_Y, 1)]
+void SecondAddReductionKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadID, uint3 groupId : SV_GroupID, uint groupIndex : SV_GroupIndex)
+{
+    uint dim = uint(_Params.x) / THREAD_NUM_X;
+    uint inputIndex = (id.z * dim * dim + id.y * dim + id.x) * SH_BASIS_COUNT;
+    uint index = groupIndex * SH_BASIS_COUNT;
+    sharedMem[index + 0] = _Input[inputIndex + 0];
+    sharedMem[index + 1] = _Input[inputIndex + 1];
+    sharedMem[index + 2] = _Input[inputIndex + 2];
+    sharedMem[index + 3] = _Input[inputIndex + 3];
+    sharedMem[index + 4] = _Input[inputIndex + 4];
+    sharedMem[index + 5] = _Input[inputIndex + 5];
+    sharedMem[index + 6] = _Input[inputIndex + 6];
+    sharedMem[index + 7] = _Input[inputIndex + 7];
+    sharedMem[index + 8] = _Input[inputIndex + 8];
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    for (uint s = THREAD_NUM / 2; s > 0; s >>= 1) // stride: 8, 4, 2, 1
+    {
+        if (groupIndex < s)
+        {
+            uint index2 = (groupIndex + s) * SH_BASIS_COUNT;
+            sharedMem[index + 0] += sharedMem[index2 + 0];
+            sharedMem[index + 1] += sharedMem[index2 + 1];
+            sharedMem[index + 2] += sharedMem[index2 + 2];
+            sharedMem[index + 3] += sharedMem[index2 + 3];
+            sharedMem[index + 4] += sharedMem[index2 + 4];
+            sharedMem[index + 5] += sharedMem[index2 + 5];
+            sharedMem[index + 6] += sharedMem[index2 + 6];
+            sharedMem[index + 7] += sharedMem[index2 + 7];
+            sharedMem[index + 8] += sharedMem[index2 + 8];
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    
+    if (groupIndex == 0)
+    {
+        uint groupCountX = dim / THREAD_NUM_X;
+        uint groupCountY = dim / THREAD_NUM_Y;
+        uint outputIndex = (groupId.z * groupCountX * groupCountY + groupId.y * groupCountX + groupId.x) * SH_BASIS_COUNT;
+        _Result[outputIndex + 0] = sharedMem[0];
+        _Result[outputIndex + 1] = sharedMem[1];
+        _Result[outputIndex + 2] = sharedMem[2];
+        _Result[outputIndex + 3] = sharedMem[3];
+        _Result[outputIndex + 4] = sharedMem[4];
+        _Result[outputIndex + 5] = sharedMem[5];
+        _Result[outputIndex + 6] = sharedMem[6];
+        _Result[outputIndex + 7] = sharedMem[7];
+        _Result[outputIndex + 8] = sharedMem[8];
+    }
+}

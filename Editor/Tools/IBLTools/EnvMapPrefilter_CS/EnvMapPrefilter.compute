@@ -1,0 +1,78 @@
+#pragma kernel PrefilterEnvMap
+
+#define PI 3.14159265358979323846
+#include "../../../../Shaders/ShaderLibrary/IBLLibrary.hlsl"
+
+TextureCube _EnvMap;
+SamplerState trilinear_repeat_sampler_EnvMap;
+RWStructuredBuffer<float4> _Result;
+float _Rotation;
+float _Roughness;
+int _Face;
+int _SizePerFace;
+int _SampleNumber;
+int _MipMapLevel;
+float _Exposure;
+
+float3 RotateAroundYInDegrees(float3 dir, float degrees)
+{
+    float alpha = degrees * PI / 180.0;
+    float sina, cosa;
+    sincos(alpha, sina, cosa);
+    float2x2 m = float2x2(cosa, -sina, sina, cosa);
+    return float3(mul(m, dir.xz), dir.y).xzy;
+}
+
+float3 CubeMapping_Right(int face, float2 uv)
+{
+    float3 dir = 0;
+
+    switch (face)
+    {
+        case 0: //+X
+            dir.x = 1.0;
+            dir.yz = uv.yx * -2.0 + 1.0;
+            break;
+
+        case 1: //-X
+            dir.x = -1.0;
+            dir.y = uv.y * -2.0f + 1.0f;
+            dir.z = uv.x * 2.0f - 1.0f;
+            break;
+
+        case 2: //+Y
+            dir.xz = uv * 2.0f - 1.0f;
+            dir.y = 1.0f;
+            break;
+        
+        case 3: //-Y
+            dir.x = uv.x * 2.0f - 1.0f;
+            dir.z = uv.y * -2.0f + 1.0f;
+            dir.y = -1.0f;
+            break;
+
+        case 4: //+Z
+            dir.x = uv.x * 2.0f - 1.0f;
+            dir.y = uv.y * -2.0f + 1.0f;
+            dir.z = 1;
+            break;
+
+        case 5: //-Z
+            dir.xy = uv * -2.0f + 1.0f;
+            dir.z = -1;
+            break;
+    }
+    return normalize(dir);
+}
+
+[numthreads(8,8,1)]
+void PrefilterEnvMap (uint3 id : SV_DispatchThreadID)
+{
+    int mipMapSize = _SizePerFace / pow(2, _MipMapLevel);
+    float3 dir = CubeMapping_Right(_Face, float2(id.xy) / (mipMapSize - 1));
+    dir = RotateAroundYInDegrees(dir, _Rotation);
+    float3 prefilterColor = PrefilterEnvMap_GGX(_EnvMap, trilinear_repeat_sampler_EnvMap, _SampleNumber, _SizePerFace, _Roughness, dir);
+    prefilterColor *= _Exposure;
+    uint index = id.y * mipMapSize + id.x;
+    _Result[index] = float4(prefilterColor, 1.0);
+}

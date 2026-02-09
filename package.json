@@ -1,0 +1,20 @@
+{
+  "name": "com.ystudio.render-pipeline.antique",
+  "version": "0.1.0",
+  "displayName": "Antique Render Pipeline",
+  "description": "A custom scriptable rendering pipeline(SRP), made by ystudio",
+  "author": {
+    "name": "NiaoBu",
+    "email": "niaobu@live.com"
+  },
+  "unity": "6000.3",
+  "dependencies": {
+    "com.unity.render-pipelines.core": "17.3.0"
+  },
+  "keywords": [
+    "graphics",
+    "rendering",
+    "render",
+    "pipeline"
+  ]
+}
