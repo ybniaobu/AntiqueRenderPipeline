@@ -6,7 +6,7 @@
 /[Bb]uilds/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
-*.meta
+# *.meta
 
 # VS/MD
 *.csproj
