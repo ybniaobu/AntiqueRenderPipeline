@@ -34,30 +34,8 @@ namespace YPipeline
             m_Data.debugSettings = new DebugSettings();
 #endif
             
-            // Supported Rendering Features
-#if UNITY_EDITOR
-            // SupportedRenderingFeatures.active.rendersUIOverlay = true;
-            SupportedRenderingFeatures.active.overridesRealtimeReflectionProbes = true;
-            SupportedRenderingFeatures.active.overridesShadowmask = true;
-            
-            SupportedRenderingFeatures.active.reflectionProbeModes = SupportedRenderingFeatures.ReflectionProbeModes.Rotation;
-
-            SupportedRenderingFeatures.active.enlighten = false;
-            SupportedRenderingFeatures.active.mixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeModes.IndirectOnly;
-            SupportedRenderingFeatures.active.defaultMixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeModes.IndirectOnly;
-            SupportedRenderingFeatures.active.lightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime;
-            SupportedRenderingFeatures.active.lightmapsModes = LightmapsMode.NonDirectional;
-            SupportedRenderingFeatures.active.overridesFog = true;
-            SupportedRenderingFeatures.active.overridesOtherLightingSettings = true;
-            
-            SupportedRenderingFeatures.active.receiveShadows = false;
-            SupportedRenderingFeatures.active.rendererProbes = false;
-            SupportedRenderingFeatures.active.lightProbeProxyVolumes = false;
-#endif
-            // Graphics Settings
-            GraphicsSettings.useScriptableRenderPipelineBatching = asset.enableSRPBatcher;
-            GraphicsSettings.lightsUseLinearIntensity = true;
-            
+            // Initialization & Settings
+            SetGraphicsAndQualitySettings();
             RTHandles.Initialize(Screen.width, Screen.height);
             VolumeManager.instance.Initialize(null, asset.globalVolumeProfile);
             BlitHelper.Initialize();
@@ -68,7 +46,10 @@ namespace YPipeline
             
 #if UNITY_EDITOR
             m_PreviewCameraRenderer = CameraRenderer.Create<PreviewCameraRenderer>(ref m_Data);
-            InitializeLightmapper();
+            
+            // Editor
+            SetSupportedRenderingFeatures();
+            SetLightmapper();
 #endif
             
             // APV
@@ -155,6 +136,13 @@ namespace YPipeline
             }
             
             m_Data.renderGraph.EndFrame();
+        }
+
+        private void SetGraphicsAndQualitySettings()
+        {
+            GraphicsSettings.useScriptableRenderPipelineBatching = m_Data.asset.enableSRPBatcher;
+            GraphicsSettings.lightsUseLinearIntensity = true;
+            GraphicsSettings.lightsUseColorTemperature = true;
         }
     }
 }

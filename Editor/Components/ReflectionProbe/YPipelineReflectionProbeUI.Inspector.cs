@@ -13,7 +13,7 @@ namespace YPipeline.Editor
     
     public static partial class YPipelineReflectionProbeUI
     {
-        public enum Expandable
+        private enum Expandable
         {
             Runtime = 1 << 0,
             Capture = 1 << 1,

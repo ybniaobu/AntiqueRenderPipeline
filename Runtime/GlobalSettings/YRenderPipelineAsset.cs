@@ -87,8 +87,6 @@ namespace YPipeline
         // 渲染配置 Rendering Settings
         // ----------------------------------------------------------------------------------------------------
         
-        // TODO：参考 HDRP 的 Asset
-        [Header("Rendering Settings")]
         public RenderPath renderPath = RenderPath.ForwardPlus;
         
         public bool enableSRPBatcher = true;
@@ -104,9 +102,6 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         // Light Culling
-        
-        [Header("Lighting Settings")]
-        [Tooltip("Enable light 2.5D culling, which splits depth into cells to better handle depth discontinuities")]
         public bool enableSplitDepth = true;
         
         // Reflection Probes Culling
@@ -121,22 +116,21 @@ namespace YPipeline
         // APV
         public ProbeVolumeSHBands probeVolumeSHBands = ProbeVolumeSHBands.SphericalHarmonicsL1;
         public ProbeVolumeTextureMemoryBudget probeVolumeMemoryBudget = ProbeVolumeTextureMemoryBudget.MemoryBudgetMedium;
-        public ProbeVolumeBlendingTextureMemoryBudget probeVolumeBlendingMemoryBudget = ProbeVolumeBlendingTextureMemoryBudget.MemoryBudgetMedium;
         public bool supportProbeVolumeGPUStreaming = true;
         public bool supportProbeVolumeDiskStreaming = false;
         public bool supportProbeVolumeScenarios = true;
         public bool supportProbeVolumeScenarioBlending = true;
+        public ProbeVolumeBlendingTextureMemoryBudget probeVolumeBlendingMemoryBudget = ProbeVolumeBlendingTextureMemoryBudget.MemoryBudgetMedium;
         
         // ----------------------------------------------------------------------------------------------------
         // 阴影配置 Shadow Settings
         // ----------------------------------------------------------------------------------------------------
         
-        [Header("Shadow Settings")]
         public ShadowMode shadowMode = ShadowMode.PCSS;
         
         public float maxShadowDistance = 100.0f;
         
-        [Range(0f, 1f)] public float distanceFade = 0.1f;
+        [Range(0f, 1f)] public float distanceFade = 0.05f;
         
         [Range(1, 4)] public int cascadeCount = 4;
         
@@ -154,7 +148,6 @@ namespace YPipeline
         // 后处理配置 Post Processing Settings
         // ----------------------------------------------------------------------------------------------------
         
-        [Header("Post Processing Settings")]
         public VolumeProfile globalVolumeProfile;
         
         public int bakedLUTResolution = 32;
