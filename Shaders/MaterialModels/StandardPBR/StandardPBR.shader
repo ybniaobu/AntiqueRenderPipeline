@@ -66,6 +66,7 @@
             #pragma shader_feature_local_fragment _USE_NORMALTEX
             
             // YPipeline keywords
+            #pragma multi_compile _ _EDITOR_PREVIEW
             #pragma multi_compile _SHADOW_PCF _SHADOW_PCSS
             #pragma multi_compile _ _SCREEN_SPACE_IRRADIANCE
             #pragma multi_compile _ _SCREEN_SPACE_AMBIENT_OCCLUSION

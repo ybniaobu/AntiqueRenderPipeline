@@ -343,8 +343,7 @@ void TiledLightCulling(uint3 id : SV_DispatchThreadID, uint3 groupThreadId : SV_
     uint reflectionProbeHeaderIndex = (groupId.y * _TileParams.x + groupId.x) * (MAX_REFLECTION_PROBE_COUNT_PER_TILE + 1);
     uint minLightCount = min(lightCountInTile, MAX_LIGHT_COUNT_PER_TILE);
     uint minReflectionProbeCount = min(reflectionProbeCountInTile, MAX_REFLECTION_PROBE_COUNT_PER_TILE);
-
-    UNITY_BRANCH
+    
     if (groupIndex == 0)
     {
         _TilesLightIndicesBuffer[lightHeaderIndex] = lightCountInTile;

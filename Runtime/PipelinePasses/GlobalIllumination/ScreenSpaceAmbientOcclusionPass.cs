@@ -27,6 +27,7 @@ namespace YPipeline
             public Vector4 ssaoParams;
             public int temporalDenoiseEnabled;
             public Vector4 denoiseParams;
+            public Vector4 denoiseParams2;
             
             public TextureHandle aoTexture;
             public TextureHandle aoHistory;
@@ -98,7 +99,8 @@ namespace YPipeline
                         passData.ssaoParams = new Vector4(m_AO.gtaoIntensity.value, m_AO.gtaoRadius.value, m_AO.gtaoDirectionCount.value, m_AO.gtaoStepCount.value);
                         break;
                 }
-                passData.denoiseParams = new Vector4(m_AO.kernelRadius.value, m_AO.sigma.value, m_AO.depthThreshold.value, m_AO.criticalValue.value);
+                passData.denoiseParams = new Vector4(m_AO.absoluteDepthThreshold.value, m_AO.relativeDepthThreshold.value, 0, 0);
+                passData.denoiseParams2 = new Vector4(m_AO.kernelRadius.value, m_AO.sigma.value, m_AO.criticalValue.value, 0);
                 passData.temporalDenoiseEnabled = passData.enableTemporalDenoise ? 1 : 0;
 
                 // Create Ambient Occlusion Texture
@@ -239,6 +241,7 @@ namespace YPipeline
                         context.cmd.SetKeyword(data.denoiseCS, halfResKeyword2, enableHalfResolution);
                         context.cmd.SetComputeVectorParam(data.denoiseCS, "_TextureSize", data.textureSize);
                         context.cmd.SetComputeVectorParam(data.denoiseCS, YPipelineShaderIDs.k_SSAODenoiseParamsID, data.denoiseParams);
+                        context.cmd.SetComputeVectorParam(data.denoiseCS, YPipelineShaderIDs.k_SSAODenoiseParams2ID, data.denoiseParams2);
                     }
                     
                     // Temporal Denoise

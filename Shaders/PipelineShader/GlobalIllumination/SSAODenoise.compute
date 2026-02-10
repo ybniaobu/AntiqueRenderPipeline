@@ -55,16 +55,19 @@ float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bu
 
 // --- Local Variables ---
 float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
-float4 _SSAODenoiseParams; // x: kernel radius, y: sigma, z: depth threshold, w: variance critical value
+float4 _SSAODenoiseParams; // x: absolute depth threshold, y: relative depth threshold
+float4 _SSAODenoiseParams2; // x: kernel radius, y: sigma, z: variance critical value
 
 // ----------------------------------------------------------------------------------------------------
 // Input
 // ----------------------------------------------------------------------------------------------------
 
-inline float GetKernelRadius()      { return _SSAODenoiseParams.x; }
-inline float GetSigma()             { return _SSAODenoiseParams.y; }
-inline float GetDepthThreshold()    { return _SSAODenoiseParams.z; }
-inline float GetCriticalValue()     { return _SSAODenoiseParams.w; }
+inline float2 GetDepthThreshold()           { return _SSAODenoiseParams.xy; }
+inline float GetAbsoluteDepthThreshold()    { return _SSAODenoiseParams.x; }
+inline float GetRelativeDepthThreshold()    { return _SSAODenoiseParams.y; }
+inline float GetKernelRadius()              { return _SSAODenoiseParams2.x; }
+inline float GetSigma()                     { return _SSAODenoiseParams2.y; }
+inline float GetCriticalValue()             { return _SSAODenoiseParams2.z; }
 
 // ----------------------------------------------------------------------------------------------------
 // Upsample Kernel
@@ -292,11 +295,12 @@ void TemporalDenoiseKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId :
 
     // ------------------------- Adaptive Blending Factor -------------------------
     
-    float blendFactor = lerp(0.95, 0.85, velocityFactor); // Velocity Test
+    float blendFactor = lerp(0.95, 0.5, velocityFactor); // Velocity Test
     
     float middleDepth = neighbours[0].g;
     float historyDepth = history.g;
-    bool depthTest = abs(1 - middleDepth / historyDepth) < GetDepthThreshold();
+    bool depthTest = abs(1 - middleDepth / historyDepth) < GetRelativeDepthThreshold();
+    depthTest = depthTest || abs(middleDepth - historyDepth) < GetAbsoluteDepthThreshold();
     blendFactor = lerp(0, blendFactor, depthTest); // Depth Test
     blendFactor = lerp(blendFactor, 0, any(abs(historyUV - 0.5) > 0.5)); // Off-Screen Test
     

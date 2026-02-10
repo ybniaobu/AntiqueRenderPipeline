@@ -34,7 +34,7 @@ namespace YPipeline.Editor
         {
             m_SerializedProbe.Update();
             
-            YPipelineReflectionProbeUI.Draw(m_SerializedProbe, this);
+            YPipelineReflectionProbeUI.Inspector.Draw(m_SerializedProbe, this);
             
             m_SerializedProbe.ApplyModifiedProperties();
         }

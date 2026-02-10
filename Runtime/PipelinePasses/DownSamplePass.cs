@@ -23,13 +23,13 @@ namespace YPipeline
             public TextureHandle sceneHistoryInput;
         }
         
-        private ScreenSpaceGlobalIllumination m_SSGI;
+        private NearFieldGlobalIllumination m_NFGI;
         private ScreenSpaceAmbientOcclusion m_SSAO;
 
         protected override void Initialize(ref YPipelineData data)
         {
             var stack = VolumeManager.instance.stack;
-            m_SSGI = stack.GetComponent<ScreenSpaceGlobalIllumination>();
+            m_NFGI = stack.GetComponent<NearFieldGlobalIllumination>();
             m_SSAO = stack.GetComponent<ScreenSpaceAmbientOcclusion>();
         }
         
@@ -37,14 +37,15 @@ namespace YPipeline
 
         protected override void OnRecord(ref YPipelineData data)
         {
-            bool needDownsample = (data.IsSSGIEnabled && m_SSGI.IsActive() && m_SSGI.halfResolution.value) 
+            // 这里 HZB Tracing SSGI 完成后，别忘了修改
+            bool needDownsample = (data.IsSSGIEnabled && m_NFGI.IsActive() && m_NFGI.halfResolution.value) 
                                   || (data.IsSSAOEnabled && m_SSAO.IsActive() && m_SSAO.halfResolution.value);
             if (!needDownsample) return;
             
             using (var builder = data.renderGraph.AddComputePass<DownSamplePassData>("Downsample", out var passData))
             {
-                bool temporalDenoiseEnabled = m_SSGI.enableTemporalDenoise.value || m_SSAO.enableTemporalDenoise.value;
-                bool ssgiEnabled = m_SSGI.IsActive();
+                bool temporalDenoiseEnabled = m_NFGI.enableTemporalDenoise.value || m_SSAO.enableTemporalDenoise.value;
+                bool ssgiEnabled = m_NFGI.IsActive();
                 
                 passData.cs = data.runtimeResources.DownSampleCS;
                 passData.temporalDenoiseEnabled = temporalDenoiseEnabled;

@@ -4,7 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public struct YPipelineData
+    public class YPipelineData
     {
         // ----------------------------------------------------------------------------------------------------
         // References
@@ -12,11 +12,13 @@ namespace YPipeline
         
         public YRenderPipelineAsset asset;
         public YPipelineRuntimeResources runtimeResources;
+        
         public RenderGraph renderGraph;
         public ScriptableRenderContext context;
         public Camera camera;
         public CommandBuffer cmd;
         public CullingResults cullingResults;
+        
         public YPipelineLightsData lightsData;
         public YPipelineReflectionProbesData reflectionProbesData;
         
@@ -32,7 +34,7 @@ namespace YPipeline
         public bool IsDeferredRenderingEnabled => asset.renderPath == RenderPath.DeferredPlus;
         public bool IsTAAEnabled => asset.antiAliasingMode == AntiAliasingMode.TAA;
         public bool IsSSAOEnabled => asset.enableScreenSpaceAmbientOcclusion;
-        public bool IsSSGIEnabled => asset.enableScreenSpaceGlobalIllumination;
+        public bool IsSSGIEnabled => asset.ssgiMode != SSGIMode.None;
         public bool IsSSREnabled => asset.enableScreenSpaceReflection;
         
         // Store locally the value on the instance due as the Render Pipeline Asset data might change before the disposal of the asset, making some APV Resources leak.

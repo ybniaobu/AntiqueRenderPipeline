@@ -163,6 +163,7 @@ inline float4x4 GetSpotLightShadowMatrix(int shadowIndex)                  { ret
 
 CBUFFER_START(ReflectionProbeData)
     float4 _ReflectionProbeCount; // x: reflection probe count, yzw: 暂无
+    float4 _ReflectionProbePositions[MAX_REFLECTION_PROBE_COUNT]; // xyz: probe position
     float4 _ReflectionProbeBoxCenter[MAX_REFLECTION_PROBE_COUNT]; // xyz: box center, w: importance
     float4 _ReflectionProbeBoxExtent[MAX_REFLECTION_PROBE_COUNT]; // xyz: box extent, w: box projection
     float4 _ReflectionProbeSH[MAX_REFLECTION_PROBE_COUNT * 7]; // reflection probe normalization
@@ -171,6 +172,7 @@ CBUFFER_START(ReflectionProbeData)
 CBUFFER_END
 
 inline float GetReflectionProbeCount()                    { return _ReflectionProbeCount.x; }
+inline float3 GetReflectionProbePosition(int index)       { return _ReflectionProbePositions[index].xyz; }
 inline float3 GetReflectionProbeBoxCenter(int index)      { return _ReflectionProbeBoxCenter[index].xyz; }
 inline float GetReflectionProbeImportance(int index)      { return _ReflectionProbeBoxCenter[index].w; }
 inline float3 GetReflectionProbeBoxExtent(int index)      { return _ReflectionProbeBoxExtent[index].xyz; }
@@ -229,18 +231,9 @@ TEXTURE2D(_ReflectionProbeAtlas);
 float4 _ReflectionProbeAtlas_TexelSize;
 
 // Blue Noise
-TEXTURE2D(_BlueNoise64);
-float4 _BlueNoise64_TexelSize;
-
-// STBN
-TEXTURE2D(_STBN128Scalar3);
-float4 _STBN128Scalar3_TexelSize;
-TEXTURE2D(_STBN128Vec3);
-float4 _STBN128Vec3_TexelSize;
-TEXTURE2D(_STBN128UnitVec3);
-float4 _STBN128UnitVec3_TexelSize;
-TEXTURE2D(_STBN128CosineUnitVec3);
-float4 _STBN128CosineUnitVec3_TexelSize;
+TEXTURE2D(_BlueNoise);
+float4 _BlueNoise_TexelSize;
+TEXTURE3D(_BlueNoise3D);
 
 // General Samplers
 SAMPLER(sampler_PointRepeat);

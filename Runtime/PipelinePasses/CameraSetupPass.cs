@@ -80,9 +80,9 @@ namespace YPipeline
                 if (data.IsTAAEnabled)
                 {
                     int frameIndex = Time.frameCount;
-                    Vector2 jitter = RandomUtility.k_Halton[frameIndex % 16 + 1] - new Vector2(0.5f, 0.5f);
+                    Vector2 jitter = RandomUtils.k_Halton[frameIndex % 16 + 1] - new Vector2(0.5f, 0.5f);
                     jitter *= 2.0f * m_TAA.jitterScale.value;
-                    jitteredProjectionMatrix = CameraUtility.GetJitteredProjectionMatrix(data.BufferSize, projectionMatrix, jitter, isOrthographic);
+                    jitteredProjectionMatrix = CameraUtils.GetJitteredProjectionMatrix(data.BufferSize, projectionMatrix, jitter, isOrthographic);
                 }
                 else
                 {

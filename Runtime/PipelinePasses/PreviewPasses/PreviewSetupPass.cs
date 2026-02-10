@@ -22,9 +22,6 @@ namespace YPipeline
             public BufferHandle punctualLightsBuffer;
             public PunctualLightStructuredBuffer[] punctualLightsData = new PunctualLightStructuredBuffer[YPipelineLightsData.k_MaxPunctualLightCount];
             
-            // public BufferHandle tileLightIndicesBuffer;
-            // public BufferHandle tileReflectionProbeIndicesBuffer;
-            
             public PointLightShadowStructuredBuffer[] pointLightsShadowData = new PointLightShadowStructuredBuffer[YPipelineLightsData.k_MaxShadowingPointLightCount];
             public BufferHandle pointLightShadowBuffer;
             public Matrix4x4[] pointLightShadowMatrices = new Matrix4x4[YPipelineLightsData.k_MaxShadowingPointLightCount * 6];
@@ -42,16 +39,8 @@ namespace YPipeline
 
             public void Setup(YPipelineLightsData lightsData)
             {
-                if (lightsData.sunLightCount > 0)
-                {
-                    sunLightColor = lightsData.sunLightColor;
-                    sunLightDirection = lightsData.sunLightDirection;
-                }
-                else
-                {
-                    sunLightColor = Vector4.zero;
-                    sunLightDirection = Vector4.zero;
-                }
+                sunLightColor = lightsData.sunLightColor; 
+                sunLightDirection = lightsData.sunLightDirection;
             }
         }
 
@@ -73,19 +62,6 @@ namespace YPipeline
             public Vector4 pointLightShadowParams;
             public Vector4 pointLightShadowParams2;
             public Vector4 pointLightDepthParams;
-        
-            public void Setup(YPipelineLightsData lightsData, int index)
-            {
-                if (lightsData.shadowingPointLightCount > 0)
-                {
-                    pointLightShadowColors = lightsData.pointLightShadowColors[index];
-                    pointLightPenumbraColors = lightsData.pointLightPenumbraColors[index];
-                    pointLightShadowBias = lightsData.pointLightShadowBias[index];
-                    pointLightShadowParams = lightsData.pointLightShadowParams[index];
-                    pointLightShadowParams2 = lightsData.pointLightShadowParams2[index];
-                    pointLightDepthParams = lightsData.pointLightDepthParams[index];
-                }
-            }
         }
         
         [StructLayout(LayoutKind.Sequential)]
@@ -97,19 +73,6 @@ namespace YPipeline
             public Vector4 spotLightShadowParams;
             public Vector4 spotLightShadowParams2;
             public Vector4 spotLightDepthParams;
-        
-            public void Setup(YPipelineLightsData lightsData, int index)
-            {
-                if (lightsData.shadowingSpotLightCount > 0)
-                {
-                    spotLightShadowColors = lightsData.spotLightShadowColors[index];
-                    spotLightPenumbraColors = lightsData.spotLightPenumbraColors[index];
-                    spotLightShadowBias = lightsData.spotLightShadowBias[index];
-                    spotLightShadowParams = lightsData.spotLightShadowParams[index];
-                    spotLightShadowParams2 = lightsData.spotLightShadowParams2[index];
-                    spotLightDepthParams = lightsData.spotLightDepthParams[index];
-                }
-            }
         }
         
         private RTHandle m_CameraColorTarget;
@@ -214,7 +177,14 @@ namespace YPipeline
                 builder.SetRenderFunc((SetupPassData data, UnsafeGraphContext context) =>
                 {
                     context.cmd.SetupCameraProperties(data.camera);
+                    
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_EditorPreview, true);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_TAA, false);
                     CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_ScreenSpaceAmbientOcclusion, false);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_ScreenSpaceIrradiance, false);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_ProbeVolumeL1, false);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_ProbeVolumeL2, false);
+                    
                     context.cmd.SetGlobalVector(YPipelineShaderIDs.k_BufferSizeID, new Vector4(1f / data.bufferSize.x, 1f / data.bufferSize.y, data.bufferSize.x, data.bufferSize.y));
                     
                     // Sun Light Data

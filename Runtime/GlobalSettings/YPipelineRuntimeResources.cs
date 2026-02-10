@@ -47,61 +47,20 @@ namespace YPipeline
             set => this.SetValueAndNotify(ref m_FilmGrainTex, value, nameof(m_FilmGrainTex));
         }
         
-        [SerializeField] [ResourcePath("PipelineResources/Textures/BlueNoise/BlueNoise16.png")]
-        private Texture2D m_BlueNoise16;
-        public Texture2D BlueNoise16
+        [SerializeField] [ResourcePath("PipelineResources/Textures/BlueNoise/BlueNoise64RGBA.png")]
+        private Texture2D m_BlueNoise;
+        public Texture2D BlueNoise
         {
-            get => m_BlueNoise16;
-            set => this.SetValueAndNotify(ref m_BlueNoise16, value, nameof(m_BlueNoise16));
+            get => m_BlueNoise;
+            set => this.SetValueAndNotify(ref m_BlueNoise, value, nameof(m_BlueNoise));
         }
         
-        
-        // [SerializeField]
-        // private Texture2D m_BlueNoise32;
-        // public Texture2D BlueNoise32
-        // {
-        //     get => m_BlueNoise32;
-        //     set => this.SetValueAndNotify(ref m_BlueNoise32, value, nameof(m_BlueNoise32));
-        // }
-        
-        [SerializeField] [ResourcePath("PipelineResources/Textures/BlueNoise/BlueNoise64.png")]
-        private Texture2D m_BlueNoise64;
-        public Texture2D BlueNoise64
+        [SerializeField] [ResourcePath("PipelineResources/Textures/BlueNoise/BlueNoise64RGBA_3D.png")]
+        private Texture3D m_BlueNoise3D;
+        public Texture3D BlueNoise3D
         {
-            get => m_BlueNoise64;
-            set => this.SetValueAndNotify(ref m_BlueNoise64, value, nameof(m_BlueNoise64));
-        }
-        
-        [SerializeField] [ResourcePath("PipelineResources/Textures/STBN/STBN128_scalar3.png")]
-        private Texture2D m_STBN128Scale3;
-        public Texture2D STBN128Scale3
-        {
-            get => m_STBN128Scale3;
-            set => this.SetValueAndNotify(ref m_STBN128Scale3, value, nameof(m_STBN128Scale3));
-        }
-        
-        [SerializeField] [ResourcePath("PipelineResources/Textures/STBN/STBN128_unitvec3.png")]
-        private Texture2D m_STBN128UnitVec3;
-        public Texture2D STBN128UnitVec3
-        {
-            get => m_STBN128UnitVec3;
-            set => this.SetValueAndNotify(ref m_STBN128UnitVec3, value, nameof(m_STBN128UnitVec3));
-        }
-        
-        [SerializeField] [ResourcePath("PipelineResources/Textures/STBN/STBN128_unitvec3_cosine.png")]
-        private Texture2D m_STBN128CosineUnitVec3;
-        public Texture2D STBN128CosineUnitVec3
-        {
-            get => m_STBN128CosineUnitVec3;
-            set => this.SetValueAndNotify(ref m_STBN128CosineUnitVec3, value, nameof(m_STBN128CosineUnitVec3));
-        }
-        
-        [SerializeField] [ResourcePath("PipelineResources/Textures/STBN/STBN128_vec3.png")]
-        private Texture2D m_STBN128Vec3;
-        public Texture2D STBN128Vec3
-        {
-            get => m_STBN128Vec3;
-            set => this.SetValueAndNotify(ref m_STBN128Vec3, value, nameof(m_STBN128Vec3));
+            get => m_BlueNoise3D;
+            set => this.SetValueAndNotify(ref m_BlueNoise3D, value, nameof(m_BlueNoise3D));
         }
         
         #endregion

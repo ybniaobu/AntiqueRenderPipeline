@@ -21,20 +21,14 @@ namespace YPipeline
         private RTHandle m_CameraDepthTarget;
         
         private RTHandle m_EnvBRDFLut;
-        private RTHandle m_BlueNoise64;
-        private RTHandle m_STBN128Scalar3;
-        private RTHandle m_STBN128Vec3;
-        private RTHandle m_STBN128UnitVec3;
-        private RTHandle m_STBN128CosineUnitVec3;
+        private RTHandle m_BlueNoise;
+        private RTHandle m_BlueNoise3D;
 
         protected override void Initialize(ref YPipelineData data)
         {
             m_EnvBRDFLut = RTHandles.Alloc(data.runtimeResources.EnvironmentBRDFLut);
-            m_BlueNoise64 = RTHandles.Alloc(data.runtimeResources.BlueNoise64);
-            m_STBN128Scalar3 = RTHandles.Alloc(data.runtimeResources.STBN128Scale3);
-            m_STBN128Vec3  = RTHandles.Alloc(data.runtimeResources.STBN128Vec3);
-            m_STBN128UnitVec3  = RTHandles.Alloc(data.runtimeResources.STBN128UnitVec3);
-            m_STBN128CosineUnitVec3 = RTHandles.Alloc(data.runtimeResources.STBN128CosineUnitVec3);
+            m_BlueNoise = RTHandles.Alloc(data.runtimeResources.BlueNoise);
+            m_BlueNoise3D = RTHandles.Alloc(data.runtimeResources.BlueNoise3D);
         }
 
         protected override void OnDispose()
@@ -45,17 +39,11 @@ namespace YPipeline
             m_CameraDepthTarget = null;
             
             RTHandles.Release(m_EnvBRDFLut);
-            RTHandles.Release(m_BlueNoise64);
-            RTHandles.Release(m_STBN128Scalar3);
-            RTHandles.Release(m_STBN128Vec3);
-            RTHandles.Release(m_STBN128UnitVec3);
-            RTHandles.Release(m_STBN128CosineUnitVec3);
+            RTHandles.Release(m_BlueNoise);
+            RTHandles.Release(m_BlueNoise3D);
             m_EnvBRDFLut = null;
-            m_BlueNoise64 = null;
-            m_STBN128Scalar3 = null;
-            m_STBN128Vec3 = null;
-            m_STBN128UnitVec3 = null;
-            m_STBN128CosineUnitVec3 = null;
+            m_BlueNoise = null;
+            m_BlueNoise3D = null;
         }
         
         protected override void OnRecord(ref YPipelineData data)
@@ -72,29 +60,18 @@ namespace YPipeline
                 builder.UseTexture(envBRDFLut, AccessFlags.Read);
                 builder.SetGlobalTextureAfterPass(envBRDFLut, YPipelineShaderIDs.k_EnvBRDFLutID);
                 
-                TextureHandle blueNoise64 = data.renderGraph.ImportTexture(m_BlueNoise64);
-                builder.UseTexture(blueNoise64, AccessFlags.Read);
-                builder.SetGlobalTextureAfterPass(blueNoise64, YPipelineShaderIDs.k_BlueNoise64ID);
+                TextureHandle blueNoise = data.renderGraph.ImportTexture(m_BlueNoise);
+                builder.UseTexture(blueNoise, AccessFlags.Read);
+                builder.SetGlobalTextureAfterPass(blueNoise, YPipelineShaderIDs.k_BlueNoiseID);
                 
-                TextureHandle stbn128Scalar = data.renderGraph.ImportTexture(m_STBN128Scalar3);
-                builder.UseTexture(stbn128Scalar, AccessFlags.Read);
-                builder.SetGlobalTextureAfterPass(stbn128Scalar, YPipelineShaderIDs.k_STBN128Scalar3ID);
-                
-                TextureHandle stbn128Vec3 = data.renderGraph.ImportTexture(m_STBN128Vec3);
-                builder.UseTexture(stbn128Vec3, AccessFlags.Read);
-                builder.SetGlobalTextureAfterPass(stbn128Vec3, YPipelineShaderIDs.k_STBN128Vec3ID);
-                
-                TextureHandle stbn128UnitVec3 = data.renderGraph.ImportTexture(m_STBN128UnitVec3);
-                builder.UseTexture(stbn128UnitVec3, AccessFlags.Read);
-                builder.SetGlobalTextureAfterPass(stbn128UnitVec3, YPipelineShaderIDs.k_STBN128UnitVec3ID);
-                
-                TextureHandle stbn128CosineUnitVec3 = data.renderGraph.ImportTexture(m_STBN128CosineUnitVec3);
-                builder.UseTexture(stbn128CosineUnitVec3, AccessFlags.Read);
-                builder.SetGlobalTextureAfterPass(stbn128CosineUnitVec3, YPipelineShaderIDs.k_STBN128CosineUnitVec3ID);
+                TextureHandle blueNoise3D = data.renderGraph.ImportTexture(m_BlueNoise3D);
+                builder.UseTexture(blueNoise3D, AccessFlags.Read);
+                builder.SetGlobalTextureAfterPass(blueNoise3D, YPipelineShaderIDs.k_BlueNoise3DID);
                 
                 // ----------------------------------------------------------------------------------------------------
                 // Attachments
                 // ----------------------------------------------------------------------------------------------------
+                
                 Vector2Int bufferSize = data.BufferSize;
                 passData.bufferSize = bufferSize;
                 
@@ -230,7 +207,7 @@ namespace YPipeline
                 // ----------------------------------------------------------------------------------------------------
                 int frameCount = Time.frameCount;
                 
-                Vector2 jitter = RandomUtility.k_Halton[frameCount % 64 + 1] - new Vector2(0.5f, 0.5f);
+                Vector2 jitter = RandomUtils.k_Halton[frameCount % 64 + 1] - new Vector2(0.5f, 0.5f);
                 passData.jitter = new Vector4(1.0f / jitter.x, 1.0f / jitter.y, jitter.x, jitter.y);
                 passData.timeParams = new Vector4(frameCount, 1.0f / frameCount);
                 passData.cascadeSettings = new Vector4(data.asset.maxShadowDistance, data.asset.distanceFade, data.asset.cascadeCount, data.asset.cascadeEdgeFade);

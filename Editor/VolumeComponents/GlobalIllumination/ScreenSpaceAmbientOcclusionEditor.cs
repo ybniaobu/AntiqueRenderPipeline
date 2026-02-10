@@ -27,7 +27,8 @@ namespace YPipeline.Editor
         private SerializedDataParameter m_GTAOStepCount;
         
         // Denoise
-        private SerializedDataParameter m_DepthThreshold;
+        private SerializedDataParameter m_AbsoluteDepthThreshold;
+        private SerializedDataParameter m_RelativeDepthThreshold;
         private SerializedDataParameter m_EnableTemporalDenoise;
         private SerializedDataParameter m_CriticalValue;
         private SerializedDataParameter m_EnableBilateralDenoise;
@@ -59,7 +60,8 @@ namespace YPipeline.Editor
             m_GTAOStepCount = Unpack(o.Find(x => x.gtaoStepCount));
             
             // Denoise
-            m_DepthThreshold = Unpack(o.Find(x => x.depthThreshold));
+            m_AbsoluteDepthThreshold = Unpack(o.Find(x => x.absoluteDepthThreshold));
+            m_RelativeDepthThreshold = Unpack(o.Find(x => x.relativeDepthThreshold));
             m_EnableTemporalDenoise = Unpack(o.Find(x => x.enableTemporalDenoise));
             m_CriticalValue = Unpack(o.Find(x => x.criticalValue));
             m_EnableBilateralDenoise = Unpack(o.Find(x => x.enableBilateralDenoise));
@@ -109,7 +111,8 @@ namespace YPipeline.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Denoise Settings", EditorStyles.boldLabel);
             
-            PropertyField(m_DepthThreshold);
+            PropertyField(m_AbsoluteDepthThreshold);
+            PropertyField(m_RelativeDepthThreshold);
             
             PropertyField(m_EnableTemporalDenoise);
 

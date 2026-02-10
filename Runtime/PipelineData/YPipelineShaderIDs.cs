@@ -78,11 +78,8 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         public static readonly int k_EnvBRDFLutID = Shader.PropertyToID("_EnvBRDFLut");
-        public static readonly int k_BlueNoise64ID = Shader.PropertyToID("_BlueNoise64");
-        public static readonly int k_STBN128Scalar3ID = Shader.PropertyToID("_STBN128Scalar3");
-        public static readonly int k_STBN128Vec3ID = Shader.PropertyToID("_STBN128Vec3");
-        public static readonly int k_STBN128UnitVec3ID = Shader.PropertyToID("_STBN128UnitVec3");
-        public static readonly int k_STBN128CosineUnitVec3ID = Shader.PropertyToID("_STBN128CosineUnitVec3");
+        public static readonly int k_BlueNoiseID = Shader.PropertyToID("_BlueNoise");
+        public static readonly int k_BlueNoise3DID = Shader.PropertyToID("_BlueNoise3D");
         
         // ----------------------------------------------------------------------------------------------------
         // Shadow Textures IDs
@@ -173,6 +170,7 @@ namespace YPipeline
         
         public static readonly int k_ReflectionProbeCountID = Shader.PropertyToID("_ReflectionProbeCount");
         
+        public static readonly int k_ReflectionProbePositionsID = Shader.PropertyToID("_ReflectionProbePositions");
         public static readonly int k_ReflectionProbeBoxCenterID = Shader.PropertyToID("_ReflectionProbeBoxCenter");
         public static readonly int k_ReflectionProbeBoxExtentID = Shader.PropertyToID("_ReflectionProbeBoxExtent");
         public static readonly int k_ReflectionProbeSHID = Shader.PropertyToID("_ReflectionProbeSH");
@@ -185,9 +183,19 @@ namespace YPipeline
         
         public static readonly int k_AmbientProbeID = Shader.PropertyToID("_AmbientProbe");
         
+        // Screen Space Near Field Global Illumination
+        public static readonly int k_NFGIParamsID = Shader.PropertyToID("_NFGIParams");
+        public static readonly int k_NFGIParams2ID = Shader.PropertyToID("_NFGIParams2");
+        public static readonly int k_NFGIFallbackParamsID = Shader.PropertyToID("_NFGIFallbackParams");
+        
+        // Screen Space Global Illumination (HZB Tracing)
         public static readonly int k_SSGIParamsID = Shader.PropertyToID("_SSGIParams");
+        public static readonly int k_SSGIParams2ID = Shader.PropertyToID("_SSGIParams2");
         public static readonly int k_SSGIFallbackParamsID = Shader.PropertyToID("_SSGIFallbackParams");
+        
+        // Denoise
         public static readonly int k_SSGIDenoiseParamsID = Shader.PropertyToID("_SSGIDenoiseParams");
+        public static readonly int k_SSGIDenoiseParams2ID = Shader.PropertyToID("_SSGIDenoiseParams2");
         
         // ----------------------------------------------------------------------------------------------------
         // Ambient Occlusion Related Param IDs
@@ -195,6 +203,7 @@ namespace YPipeline
         
         public static readonly int k_SSAOParamsID = Shader.PropertyToID("_SSAOParams");
         public static readonly int k_SSAODenoiseParamsID = Shader.PropertyToID("_SSAODenoiseParams");
+        public static readonly int k_SSAODenoiseParams2ID = Shader.PropertyToID("_SSAODenoiseParams2");
         public static readonly int k_TemporalDenoiseEnabledID = Shader.PropertyToID("_TemporalDenoiseEnabled");
         
         // ----------------------------------------------------------------------------------------------------
@@ -272,6 +281,7 @@ namespace YPipeline
 
     public static class YPipelineKeywords
     {
+        public const string k_EditorPreview = "_EDITOR_PREVIEW";
         public const string k_DeferredRendering = "_DEFERRED_RENDERING";
         
         // ----------------------------------------------------------------------------------------------------

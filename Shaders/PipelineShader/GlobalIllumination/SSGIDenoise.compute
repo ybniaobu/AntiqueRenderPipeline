@@ -55,16 +55,19 @@ float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bu
 
 // --- Local Variables ---
 float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
-float4 _SSGIDenoiseParams; // x: bilateral denoise radius, y: bilateral denoise sigma, z: depth threshold, w: temporal critical value
+float4 _SSGIDenoiseParams; // x: absolute depth threshold, y: relative depth threshold
+float4 _SSGIDenoiseParams2; // x: bilateral denoise radius, y: bilateral denoise sigma, z: temporal critical value
 
 // ----------------------------------------------------------------------------------------------------
 // Input
 // ----------------------------------------------------------------------------------------------------
 
-inline float GetKernelRadius()      { return _SSGIDenoiseParams.x; }
-inline float GetSigma()             { return _SSGIDenoiseParams.y; }
-inline float GetDepthThreshold()    { return _SSGIDenoiseParams.z; }
-inline float GetCriticalValue()     { return _SSGIDenoiseParams.w; }
+inline float2 GetDepthThreshold()           { return _SSGIDenoiseParams.xy; }
+inline float GetAbsoluteDepthThreshold()    { return _SSGIDenoiseParams.x; }
+inline float GetRelativeDepthThreshold()    { return _SSGIDenoiseParams.y; }
+inline float GetKernelRadius()              { return _SSGIDenoiseParams2.x; }
+inline float GetSigma()                     { return _SSGIDenoiseParams2.y; }
+inline float GetCriticalValue()             { return _SSGIDenoiseParams2.z; }
 
 // ----------------------------------------------------------------------------------------------------
 // Upsample
@@ -114,7 +117,7 @@ float3 LoadAndDecodeNormal(int2 pixelCoord)
 [numthreads(64, 1, 1)]
 void BilateralDenoiseHorizontalKernel(uint3 id : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
 {
-    // ------------------------- Fetch AO & Depth -------------------------
+    // ------------------------- Fetch Irradiance & Depth -------------------------
 
     int2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
     float4 irradianceAndDepth = LOAD_TEXTURE2D_LOD(_InputTexture, pixelCoord, 0);
@@ -168,7 +171,7 @@ void BilateralDenoiseHorizontalKernel(uint3 id : SV_DispatchThreadID, uint group
 [numthreads(1, 64, 1)]
 void BilateralDenoiseVerticalKernel(uint3 id : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
 {
-    // ------------------------- Fetch AO & Depth -------------------------
+    // ------------------------- Fetch Irradiance & Depth -------------------------
     
     int2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
     float4 irradianceAndDepth = LOAD_TEXTURE2D_LOD(_InputTexture, pixelCoord, 0);
@@ -296,11 +299,12 @@ void TemporalDenoiseKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId :
 
     // ------------------------- Adaptive Blending Factor -------------------------
     
-    float blendFactor = lerp(0.95, 0.85, velocityFactor); // Velocity Test
+    float blendFactor = lerp(0.95, 0.5, velocityFactor); // Velocity Test
     
     float middleDepth = neighbours[0].a;
     float historyDepth = history.a;
-    bool depthTest = abs(1 - middleDepth / historyDepth) < GetDepthThreshold();
+    bool depthTest = abs(1 - middleDepth / historyDepth) < GetRelativeDepthThreshold();
+    depthTest = depthTest || abs(middleDepth - historyDepth) < GetAbsoluteDepthThreshold();
     blendFactor = lerp(0, blendFactor, depthTest); // Depth Test
     blendFactor = lerp(blendFactor, 0, any(abs(historyUV - 0.5) > 0.5)); // Off-Screen Test
     

@@ -170,7 +170,7 @@ float3 GetParallaxCorrectionDirection(int probeIndex, float3 R, float3 positionW
         float t = min(tMax.x, min(tMax.y, tMax.z));
         t = max(t, 0.0);
         float3 intersection = positionWS + R * t;
-        return normalize(intersection - boxCenter);
+        return normalize(intersection - GetReflectionProbePosition(probeIndex));
     }
     else
     {
@@ -297,7 +297,7 @@ float3 EvaluateAndBlendingTwoReflectionProbes(in GeometryParams geometryParams, 
     {
         float weight0 = CalculateProbeWeight(bestReflectionProbeIndices.x, geometryParams.positionWS);
         float weight1 = CalculateProbeWeight(bestReflectionProbeIndices.y, geometryParams.positionWS);
-        float weight = weight0 / (weight0 + weight1);
+        float weight = weight0 / min(weight0 + weight1, 1.0);
         float3 firstProbe = GetPrefilteredEnvColor(bestReflectionProbeIndices.x, mipmap, standardPBRParams.R, geometryParams.positionWS, irradiance);
         float3 secondProbe = GetPrefilteredEnvColor(bestReflectionProbeIndices.y, mipmap, standardPBRParams.R, geometryParams.positionWS, irradiance);
         return lerp(secondProbe, firstProbe, weight);

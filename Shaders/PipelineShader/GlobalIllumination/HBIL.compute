@@ -36,8 +36,12 @@ TEXTURE2D(_MotionVectorTexture);
     #endif
 #endif
 
-TEXTURE2D(_STBN128Scalar3);
-float4 _STBN128Scalar3_TexelSize;
+// #define NOISE_TEX _BlueNoise
+// #define NOISE_TEX_TEXEL_SIZE _BlueNoise_TexelSize
+// TEXTURE2D(NOISE_TEX);
+// float4 NOISE_TEX_TEXEL_SIZE;
+#define NOISE_TEX_3D _BlueNoise3D
+TEXTURE3D(NOISE_TEX_3D);
 SAMPLER(sampler_LinearClamp);
 SAMPLER(sampler_PointClamp);
 
@@ -49,22 +53,25 @@ float4 _TimeParams; // x: frameCount, y: 1.0 / frameCount
 
 // --- Local Variables ---
 float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
-float4 _SSGIParams; // x: intensity, y: converge degree, z: direction count, w: step count
-float4 _SSGIFallbackParams; // x: fallback mode (0 for APV, 1 for ambient probe), y: fallback intensity, z: far-field AO intensity, w: x: is temporal denoise enabled (1 or 0)
+float4 _NFGIParams; // x: intensity, y: radius, z: max screen percentage
+float4 _NFGIParams2; // x: converge degree, y: direction count, z: step count
+float4 _NFGIFallbackParams; // x: fallback mode (0 for APV, 1 for ambient probe), y: fallback intensity, z: far-field AO intensity, w: is temporal denoise enabled (1 or 0)
 
 // ----------------------------------------------------------------------------------------------------
 // Input
 // ----------------------------------------------------------------------------------------------------
 
-inline float GetIntensity()                 { return _SSGIParams.x; }
-inline float GetConvergeDegree()            { return _SSGIParams.y; }
-inline float GetDirectionCount()            { return _SSGIParams.z; }
-inline float GetStepCount()                 { return _SSGIParams.w; }
+inline float GetIntensity()                 { return _NFGIParams.x; }
+inline float GetRadius()                    { return _NFGIParams.y; }
+inline float GetMaxScreenPercentage()       { return _NFGIParams.z; }
+inline float GetConvergeDegree()            { return _NFGIParams2.x; }
+inline float GetDirectionCount()            { return _NFGIParams2.y; }
+inline float GetStepCount()                 { return _NFGIParams2.z; }
 
-inline float GetFallbackMode()              { return _SSGIFallbackParams.x; }
-inline float GetFallbackIntensity()         { return _SSGIFallbackParams.y; }
-inline float GetFarFieldAOIntensity()       { return _SSGIFallbackParams.z; }
-inline float IsTemporalDenoiseEnabled()     { return _SSGIFallbackParams.w; }
+inline float GetFallbackMode()              { return _NFGIFallbackParams.x; }
+inline float GetFallbackIntensity()         { return _NFGIFallbackParams.y; }
+inline float GetFarFieldAOIntensity()       { return _NFGIFallbackParams.z; }
+inline float IsTemporalDenoiseEnabled()     { return _NFGIFallbackParams.w; }
 
 // ----------------------------------------------------------------------------------------------------
 // Utility Functions
@@ -276,14 +283,22 @@ void HBILKernel(uint3 id : SV_DispatchThreadID)
     
     // ------------------------- Noise -------------------------
     
-    int2 noiseCoord = (pixelCoord + (_Jitter.zw + 0.5) * _STBN128Scalar3_TexelSize.zw * IsTemporalDenoiseEnabled()) % _STBN128Scalar3_TexelSize.zw;
-    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, noiseCoord, 0).rgb;
+    // int2 noiseCoord = (pixelCoord + (_Jitter.zw + 0.5) * NOISE_TEX_TEXEL_SIZE.zw * IsTemporalDenoiseEnabled()) % NOISE_TEX_TEXEL_SIZE.zw;
+    // float3 noise = LOAD_TEXTURE2D_LOD(NOISE_TEX, noiseCoord, 0).rgb;
+    // float randomRadian = noise.r * TWO_PI;
+    // float randomOffset = noise.g;
+    
+    uint3 dimensions;
+    _BlueNoise3D.GetDimensions(dimensions.x, dimensions.y, dimensions.z);
+    int3 noiseCoord = int3(pixelCoord % dimensions.xy, IsTemporalDenoiseEnabled() ? _TimeParams.x % dimensions.z : 0);
+    float3 noise = LOAD_TEXTURE3D_LOD(NOISE_TEX_3D, noiseCoord, 0).rgb;
     float randomRadian = noise.r * TWO_PI;
     float randomOffset = noise.g;
     
     // ------------------------- Loop -------------------------
     
-    int maxRayTexel = max(_TextureSize.z, _TextureSize.w);
+    float radiusInUV = 0.5 * GetRadius() * _CameraSettings.y / positionVS.z;
+    int maxRayTexel = min(radiusInUV * _TextureSize.w, max(_TextureSize.z, _TextureSize.w) * GetMaxScreenPercentage());
     float dirAngle = PI / GetDirectionCount();
     float3 irradiance = 0;
     float ao = 0;
@@ -426,15 +441,23 @@ void HBILAlternateKernel(uint3 id : SV_DispatchThreadID)
 
     // ------------------------- Noise -------------------------
     
-    float2 frameMagicScale = k_Halton[_TimeParams.x % 64 + 1];
-    int2 noiseCoord = (pixelCoord + _TimeParams.x * frameMagicScale) % _STBN128Scalar3_TexelSize.zw;
-    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, noiseCoord, 0).rgb;
+    // float2 frameMagicScale = k_Halton[_TimeParams.x % 64 + 1];
+    // int2 noiseCoord = (pixelCoord + _TimeParams.x * frameMagicScale) % NOISE_TEX_TEXEL_SIZE.zw;
+    // float3 noise = LOAD_TEXTURE2D_LOD(NOISE_TEX, noiseCoord, 0).rgb;
+    // float randomRadian = noise.r * TWO_PI;
+    // float randomOffset = noise.g;
+    
+    uint3 dimensions;
+    _BlueNoise3D.GetDimensions(dimensions.x, dimensions.y, dimensions.z);
+    int3 noiseCoord = int3(pixelCoord % dimensions.xy, IsTemporalDenoiseEnabled() ? _TimeParams.x % dimensions.z : 0);
+    float3 noise = LOAD_TEXTURE3D_LOD(NOISE_TEX_3D, noiseCoord, 0).rgb;
     float randomRadian = noise.r * TWO_PI;
     float randomOffset = noise.g;
     
     // ------------------------- Loop -------------------------
     
-    int maxRayTexel = max(_TextureSize.z, _TextureSize.w);
+    float radiusInUV = 0.5 * GetRadius() * _CameraSettings.y / positionVS.z;
+    int maxRayTexel = min(radiusInUV * _TextureSize.w, max(_TextureSize.z, _TextureSize.w) * GetMaxScreenPercentage());
     float dirAngle = PI / GetDirectionCount();
     float3 irradiance = 0;
     float ao = 0;

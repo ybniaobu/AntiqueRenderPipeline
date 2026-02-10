@@ -67,6 +67,10 @@ void StandardPBRShading(in GeometryParams geometryParams, in StandardPBRParams s
     
     // ------------------------- Direct Lighting - Punctual Light -------------------------
 
+    #if defined(_EDITOR_PREVIEW) 
+    return;
+    #endif
+    
     LightTile lightTile = (LightTile) 0;
     InitializeLightTile(lightTile, geometryParams.pixelCoord);
     

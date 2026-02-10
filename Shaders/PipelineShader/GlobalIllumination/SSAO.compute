@@ -32,8 +32,10 @@ Texture2D<float2> _InputTexture;
     #endif
 #endif
 
-TEXTURE2D(_STBN128Scalar3);
-float4 _STBN128Scalar3_TexelSize;
+#define NOISE_TEX _BlueNoise
+#define NOISE_TEX_TEXEL_SIZE _BlueNoise_TexelSize
+TEXTURE2D(NOISE_TEX);
+float4 NOISE_TEX_TEXEL_SIZE;
 SAMPLER(sampler_LinearClamp);
 SAMPLER(sampler_PointClamp);
 
@@ -144,7 +146,7 @@ void SSAOKernel(uint3 id : SV_DispatchThreadID)
 
     // ------------------------- Random Rotation -------------------------
     
-    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float3 noise = LOAD_TEXTURE2D_LOD(NOISE_TEX, id.xy % NOISE_TEX_TEXEL_SIZE.zw, 0).rgb;
     float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
     float2x2 rotation = float2x2(cos(randomRadian), -sin(randomRadian), sin(randomRadian), cos(randomRadian));
     float2 offset = float2(noise.g + _Jitter.w * 0.11, noise.b + _Jitter.w * 0.23);
@@ -254,7 +256,7 @@ void HBAOKernel(uint3 id : SV_DispatchThreadID)
     
     float ao = 0;
     float phi = TWO_PI / HBAO_NUM_DIRECTIONS;
-    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float3 noise = LOAD_TEXTURE2D_LOD(NOISE_TEX, id.xy % NOISE_TEX_TEXEL_SIZE.zw, 0).rgb;
     float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
     float randomOffset = frac(noise.b + (_Jitter.w + 0.5) * IsTemporalDenoiseEnabled());
     float r2 = GetHBAORadius() * GetHBAORadius();
@@ -295,7 +297,6 @@ void HBAOKernel(uint3 id : SV_DispatchThreadID)
 
             // ------------------------- Per-Sample Attenuation -------------------------
             
-            [branch]
             if (d2 < r2 && sinH > lastSinH)
             {
                 ao += Falloff(d2, r2) * (sinH - lastSinH);
@@ -385,7 +386,7 @@ void GTAOKernel(uint3 id : SV_DispatchThreadID)
     // float offset = offsets[(_TimeParams.x / 6) % 4];
     // float randomOffset = frac(noise2 + offset * IsTemporalBlurEnabled());
     
-    float3 noise = LOAD_TEXTURE2D_LOD(_STBN128Scalar3, id.xy % _STBN128Scalar3_TexelSize.zw, 0).rgb;
+    float3 noise = LOAD_TEXTURE2D_LOD(NOISE_TEX, id.xy % NOISE_TEX_TEXEL_SIZE.zw, 0).rgb;
     float randomRadian = (noise.r + _Jitter.z * IsTemporalDenoiseEnabled()) * TWO_PI;
     float randomOffset = frac(noise.g + (_Jitter.w + 0.5) * IsTemporalDenoiseEnabled()); // randomOffset 接近于 0 会产生小黑点
 

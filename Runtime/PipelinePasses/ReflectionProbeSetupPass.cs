@@ -14,6 +14,7 @@ namespace YPipeline
             
             public int probeCount;
             
+            public Vector4[] probePositions;
             public Vector4[] boxCenter;
             public Vector4[] boxExtent;
             public Vector4[] SH;
@@ -52,6 +53,7 @@ namespace YPipeline
                 }
                 
                 passData.probeCount = data.reflectionProbesData.probeCount;
+                passData.probePositions = data.reflectionProbesData.probePositions;
                 passData.boxCenter = data.reflectionProbesData.boxCenter;
                 passData.boxExtent = data.reflectionProbesData.boxExtent;
                 passData.SH = data.reflectionProbesData.SH;
@@ -65,6 +67,7 @@ namespace YPipeline
                 builder.SetRenderFunc((ReflectionProbeSetupPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.SetGlobalVector(YPipelineShaderIDs.k_ReflectionProbeCountID, new Vector4(data.probeCount, 0));
+                    context.cmd.SetGlobalVectorArray(YPipelineShaderIDs.k_ReflectionProbePositionsID, data.probePositions);
                     context.cmd.SetGlobalVectorArray(YPipelineShaderIDs.k_ReflectionProbeBoxCenterID, data.boxCenter);
                     context.cmd.SetGlobalVectorArray(YPipelineShaderIDs.k_ReflectionProbeBoxExtentID, data.boxExtent);
                     context.cmd.SetGlobalVectorArray(YPipelineShaderIDs.k_ReflectionProbeSHID, data.SH);

@@ -13,7 +13,7 @@ namespace YPipeline.Editor
     
     public static partial class YPipelineReflectionProbeUI
     {
-        public enum Expandable
+        private enum Expandable
         {
             Runtime = 1 << 0,
             Capture = 1 << 1,
@@ -22,20 +22,20 @@ namespace YPipeline.Editor
         
         private static readonly ExpandedState<Expandable, ReflectionProbe> k_ExpandedState = new ExpandedState<Expandable, ReflectionProbe>(~-1, "YPipeline");
         
-        public static void Draw(SerializedYPipelineReflectionProbe serialized, UnityEditor.Editor owner)
+        public static readonly CED.IDrawer Inspector;
+        static YPipelineReflectionProbeUI()
         {
-            DrawModeSettings(serialized, owner);
-            
-            CED.Group( 
-                CED.FoldoutGroup(k_RuntimeSettingsHeader, Expandable.Runtime, k_ExpandedState, DrawRuntimeSettings),
-                CED.FoldoutGroup(k_CaptureSettingsHeader, Expandable.Capture, k_ExpandedState, DrawCaptureSettings),
-                CED.Group(DrawBakeAllButton),
-                CED.Group(DrawCubemapBakeButton),
-                CED.Group(DrawOctahedralBakeButton),
-                CED.Group(DrawSHBakeButton),
-                CED.FoldoutGroup(k_DebugSettingsHeader, Expandable.Debug, k_ExpandedState, DrawDebugSettings),
-                CED.Group(DrawInfo)
-            ).Draw(serialized, owner);
+            Inspector = CED.Group( 
+                CED.Group(GroupOption.None, DrawModeSettings),
+                CED.FoldoutGroup(k_RuntimeSettingsHeader, Expandable.Runtime, k_ExpandedState, FoldoutOption.None, DrawRuntimeSettings),
+                CED.FoldoutGroup(k_CaptureSettingsHeader, Expandable.Capture, k_ExpandedState, FoldoutOption.None, DrawCaptureSettings),
+                CED.Group(GroupOption.None, DrawBakeAllButton),
+                CED.Group(GroupOption.None, DrawCubemapBakeButton),
+                CED.Group(GroupOption.None, DrawOctahedralBakeButton),
+                CED.Group(GroupOption.None, DrawSHBakeButton),
+                CED.FoldoutGroup(k_DebugSettingsHeader, Expandable.Debug, k_ExpandedState, FoldoutOption.None, DrawDebugSettings),
+                CED.Group(GroupOption.None, DrawInfo)
+            );
         }
         
         // ----------------------------------------------------------------------------------------------------
@@ -289,7 +289,7 @@ namespace YPipeline.Editor
         
         private static bool IsCustomReflectionProbeCollidingWithOtherProbes(string targetPath, ReflectionProbe targetProbe, out ReflectionProbe collidingProbe)
         {
-            ReflectionProbe[] probes = Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.InstanceID).ToArray();
+            ReflectionProbe[] probes = Object.FindObjectsByType<ReflectionProbe>().ToArray();
             collidingProbe = null;
             foreach (var probe in probes)
             {

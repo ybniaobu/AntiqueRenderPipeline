@@ -20,6 +20,7 @@ namespace YPipeline
         public Vector2Int atlasSize;
         public int probeCount;
         
+        public Vector4[] probePositions = new Vector4[k_MaxReflectionProbeCount]; // xyz: position
         public Vector4[] boxCenter = new Vector4[k_MaxReflectionProbeCount]; // xyz: box center, w: importance
         public Vector4[] boxExtent = new Vector4[k_MaxReflectionProbeCount]; // xyz: box extent, w: box projection
         public Vector4[] SH = new Vector4[k_MaxReflectionProbeCount * 7]; // For reflection probe normalization
@@ -52,8 +53,14 @@ namespace YPipeline
             {
                 if (disposing)
                 {
+                    probePositions = null;
                     boxCenter = null;
                     boxExtent = null;
+                    SH = null;
+                    probeSampleParams = null;
+                    probeParams = null;
+                    
+                    octahedralAtlas = null;
                 }
             }
             m_Disposed = true;

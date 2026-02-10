@@ -7,39 +7,6 @@ using UnityEngine.Serialization;
 
 namespace YPipeline
 {
-    public enum RenderPath
-    {
-        [InspectorName("Forward+")] ForwardPlus, [InspectorName("Deferred+")] DeferredPlus
-    }
-
-    public enum Quality
-    {
-        Low, Medium, High, Epic
-    }
-    
-    public enum AntiAliasingMode
-    {
-        None, FXAA, TAA
-    }
-
-    public enum FXAAMode
-    {
-        Quality, Console
-    }
-    
-    public enum ShadowMode
-    {
-        PCF, PCSS
-    }
-
-    public enum ResolutionSize
-    {
-        [InspectorName("512")] _512 = 512,
-        [InspectorName("1024")] _1024 = 1024,
-        [InspectorName("2048")] _2048 = 2048,
-        [InspectorName("4096")] _4096 = 4096,
-    }
-    
     [CreateAssetMenu(menuName = "YPipeline/YRenderPipelineAsset")]
     public class YRenderPipelineAsset : RenderPipelineAsset<YRenderPipeline>, IProbeVolumeEnabledRenderPipeline, IRenderGraphEnabledRenderPipeline
     {
@@ -87,15 +54,13 @@ namespace YPipeline
         // 渲染配置 Rendering Settings
         // ----------------------------------------------------------------------------------------------------
         
-        // TODO：参考 HDRP 的 Asset
-        [Header("Rendering Settings")]
-        public RenderPath renderPath = RenderPath.ForwardPlus;
+        public RenderPath renderPath = RenderPath.DeferredPlus;
         
         public bool enableSRPBatcher = true;
         
         [Range(0.1f, 2f)] public float renderScale = 1.0f;
         
-        public AntiAliasingMode antiAliasingMode = AntiAliasingMode.FXAA;
+        public AntiAliasingMode antiAliasingMode = AntiAliasingMode.TAA;
         
         public FXAAMode fxaaMode = FXAAMode.Quality;
         
@@ -104,9 +69,6 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         // Light Culling
-        
-        [Header("Lighting Settings")]
-        [Tooltip("Enable light 2.5D culling, which splits depth into cells to better handle depth discontinuities")]
         public bool enableSplitDepth = true;
         
         // Reflection Probes Culling
@@ -115,28 +77,27 @@ namespace YPipeline
         
         // Global Illumination
         public bool enableScreenSpaceAmbientOcclusion = true;
-        public bool enableScreenSpaceGlobalIllumination = false;
+        public SSGIMode ssgiMode = SSGIMode.None;
         public bool enableScreenSpaceReflection = false;
         
         // APV
         public ProbeVolumeSHBands probeVolumeSHBands = ProbeVolumeSHBands.SphericalHarmonicsL1;
         public ProbeVolumeTextureMemoryBudget probeVolumeMemoryBudget = ProbeVolumeTextureMemoryBudget.MemoryBudgetMedium;
-        public ProbeVolumeBlendingTextureMemoryBudget probeVolumeBlendingMemoryBudget = ProbeVolumeBlendingTextureMemoryBudget.MemoryBudgetMedium;
         public bool supportProbeVolumeGPUStreaming = true;
         public bool supportProbeVolumeDiskStreaming = false;
         public bool supportProbeVolumeScenarios = true;
         public bool supportProbeVolumeScenarioBlending = true;
+        public ProbeVolumeBlendingTextureMemoryBudget probeVolumeBlendingMemoryBudget = ProbeVolumeBlendingTextureMemoryBudget.MemoryBudgetMedium;
         
         // ----------------------------------------------------------------------------------------------------
         // 阴影配置 Shadow Settings
         // ----------------------------------------------------------------------------------------------------
         
-        [Header("Shadow Settings")]
         public ShadowMode shadowMode = ShadowMode.PCSS;
         
         public float maxShadowDistance = 100.0f;
         
-        [Range(0f, 1f)] public float distanceFade = 0.1f;
+        [Range(0f, 1f)] public float distanceFade = 0.05f;
         
         [Range(1, 4)] public int cascadeCount = 4;
         
@@ -154,7 +115,6 @@ namespace YPipeline
         // 后处理配置 Post Processing Settings
         // ----------------------------------------------------------------------------------------------------
         
-        [Header("Post Processing Settings")]
         public VolumeProfile globalVolumeProfile;
         
         public int bakedLUTResolution = 32;

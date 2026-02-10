@@ -24,9 +24,10 @@ static const float4 k_BilinearWeights[4] =
 
 // Uniform weight, color3 version (don't consider bilinear weight)
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
-float3 DepthAwareBilateralUpsample_Uniform(float depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00)
+float3 DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00)
 {
-    float4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold;
+    bool4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
+    weights = weights || abs(halfDepths - fullDepth) < depthThreshold.x;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
     float3 fallBackColor = (color01 + color11 + color10 + color00) / 4;
@@ -35,35 +36,40 @@ float3 DepthAwareBilateralUpsample_Uniform(float depthThreshold, float fullDepth
 
 // Uniform weight, single channel version (don't consider bilinear weight)
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
-float DepthAwareBilateralUpsample_Uniform(float depthThreshold, float fullDepth, float4 halfDepths, float4 values)
+float DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, float4 values)
 {
-    float4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold;
+    bool4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
+    weights = weights || abs(halfDepths - fullDepth) < depthThreshold.x;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);
-    return lerp(weightedValueSum / weightSum, 1, all(weights == 0)); // 无 AO 是 1
+    float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
 }
 
 // Bilinear weight, color3 version
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
-float3 DepthAwareBilateralUpsample(float depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00, int orderIndex)
+float3 DepthAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00, int orderIndex)
 {
-    float4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold;
+    bool4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
+    depthWeights = depthWeights || abs(halfDepths - fullDepth) < depthThreshold.x;
     float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
-    float3 fallBackColor = (color01 + color11 + color10 + color00) / 4;
+    float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
     return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
 }
 
 // Bilinear weight, single channel version
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
-float DepthAwareBilateralUpsample(float depthThreshold, float fullDepth, float4 halfDepths, float4 values, int orderIndex)
+float DepthAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, float4 values, int orderIndex)
 {
-    float4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold;
+    bool4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
+    depthWeights = depthWeights || abs(halfDepths - fullDepth) < depthThreshold.x;
     float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);
-    return lerp(weightedValueSum / weightSum, 1, all(weights == 0)); // 无 AO 是 1
+    float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
 }
 
 // ----------------------------------------------------------------------------------------------------

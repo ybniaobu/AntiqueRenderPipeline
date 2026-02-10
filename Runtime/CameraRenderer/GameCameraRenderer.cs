@@ -26,7 +26,7 @@ namespace YPipeline
                     m_CameraPipelineNodes.Add(PipelinePass.Create<MotionVectorPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<ShadowPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<DownSamplePass>(ref data));
-                    m_CameraPipelineNodes.Add(PipelinePass.Create<ScreenSpaceGlobalIlluminationPass>(ref data));
+                    m_CameraPipelineNodes.Add(PipelinePass.Create<NearFieldGlobalIlluminationPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<ScreenSpaceAmbientOcclusionPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<TiledLightCullingPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<ForwardGeometryPass>(ref data));
@@ -42,7 +42,7 @@ namespace YPipeline
                     m_CameraPipelineNodes.Add(PipelinePass.Create<MotionVectorPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<ShadowPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<DownSamplePass>(ref data));
-                    m_CameraPipelineNodes.Add(PipelinePass.Create<ScreenSpaceGlobalIlluminationPass>(ref data));
+                    m_CameraPipelineNodes.Add(PipelinePass.Create<NearFieldGlobalIlluminationPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<ScreenSpaceAmbientOcclusionPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<TiledLightCullingPass>(ref data));
                     m_CameraPipelineNodes.Add(PipelinePass.Create<DeferredLightingPass>(ref data));
@@ -60,6 +60,8 @@ namespace YPipeline
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             m_CameraPipelineNodes.Add(PipelinePass.Create<DebugPass>(ref data));
 #endif
+            
+            m_CameraPipelineNodes.Add(PipelinePass.Create<UIOverlayPass>(ref data));
             
 #if UNITY_EDITOR
             m_CameraPipelineNodes.Add(PipelinePass.Create<GizmosPass>(ref data));

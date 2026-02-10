@@ -87,8 +87,8 @@ namespace YPipeline
                         data.lightsData.sunLightShadowColor.w = light.shadowStrength;
                         data.lightsData.sunLightPenumbraColor = yLight.penumbraTint;
                         data.lightsData.sunLightShadowBias = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        data.lightsData.sunLightShadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
-                        data.lightsData.sunLightShadowParams2 = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.sunLightShadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
+                        data.lightsData.sunLightShadowParams2 = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingSunLightCount++;
                     }
                     sunLightCount++;
@@ -114,9 +114,9 @@ namespace YPipeline
                         data.lightsData.pointLightShadowColors[shadowingPointLightCount].w = light.shadowStrength;
                         data.lightsData.pointLightPenumbraColors[shadowingPointLightCount] = yLight.penumbraTint;
                         data.lightsData.pointLightShadowBias[shadowingPointLightCount] = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
+                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
                         data.lightsData.pointLightShadowParams[shadowingPointLightCount] = shadowParams;
-                        data.lightsData.pointLightShadowParams2[shadowingPointLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.pointLightShadowParams2[shadowingPointLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingPointLightCount++;
                     }
                     punctualLightCount++;
@@ -146,9 +146,9 @@ namespace YPipeline
                         data.lightsData.spotLightShadowColors[shadowingSpotLightCount].w = light.shadowStrength;
                         data.lightsData.spotLightPenumbraColors[shadowingSpotLightCount] = yLight.penumbraTint;
                         data.lightsData.spotLightShadowBias[shadowingSpotLightCount] = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
+                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
                         data.lightsData.spotLightShadowParams[shadowingSpotLightCount] = shadowParams;
-                        data.lightsData.spotLightShadowParams2[shadowingSpotLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.spotLightShadowParams2[shadowingSpotLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingSpotLightCount++;
                     }
                     punctualLightCount++;
@@ -186,7 +186,7 @@ namespace YPipeline
                     m_ShadowSplitDataPerLight[splitOffset + i] = splitData;
                 
                     data.lightsData.cascadeCullingSpheres[i] = splitData.cullingSphere;
-                    data.lightsData.sunLightShadowMatrices[i] = ShadowUtility.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
+                    data.lightsData.sunLightShadowMatrices[i] = ShadowUtils.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
                     data.lightsData.sunLightDepthParams[i] = SystemInfo.usesReversedZBuffer ? new Vector4(-projectionMatrix.m22, -projectionMatrix.m23) : new Vector4(projectionMatrix.m22, projectionMatrix.m23);
                     data.lightsData.sunLightViewMatrices[i] = viewMatrix;
                     data.lightsData.sunLightProjectionMatrices[i] = projectionMatrix;
@@ -221,7 +221,7 @@ namespace YPipeline
 
                         // projectionMatrix.m11 = -projectionMatrix.m11;
 
-                        data.lightsData.pointLightShadowMatrices[i * 6 + j] = ShadowUtility.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
+                        data.lightsData.pointLightShadowMatrices[i * 6 + j] = ShadowUtils.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
                         data.lightsData.pointLightDepthParams[i] = SystemInfo.usesReversedZBuffer ? new Vector4(-projectionMatrix.m22, -projectionMatrix.m23) : new Vector4(projectionMatrix.m22, projectionMatrix.m23);
                         data.lightsData.pointLightViewMatrices[i * 6 + j] = viewMatrix;
                         data.lightsData.pointLightProjectionMatrices[i * 6 + j] = projectionMatrix;
@@ -247,7 +247,7 @@ namespace YPipeline
                         splitRange = new RangeInt(splitOffset, 1)
                     };
                     
-                    data.lightsData.spotLightShadowMatrices[i] = ShadowUtility.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
+                    data.lightsData.spotLightShadowMatrices[i] = ShadowUtils.GetWorldToLightScreenMatrix(projectionMatrix * viewMatrix);
                     data.lightsData.spotLightDepthParams[i] = SystemInfo.usesReversedZBuffer ? new Vector4(-projectionMatrix.m22, -projectionMatrix.m23) : new Vector4(projectionMatrix.m22, projectionMatrix.m23);
                     data.lightsData.spotLightViewMatrices[i] = viewMatrix;
                     data.lightsData.spotLightProjectionMatrices[i] = projectionMatrix;
@@ -270,6 +270,7 @@ namespace YPipeline
                 YPipelineReflectionProbe yProbe = probe.GetYPipelineReflectionProbe();
                 if (!yProbe.IsReady) continue;
 
+                data.reflectionProbesData.probePositions[reflectionProbeCount] = probe.transform.position;
                 data.reflectionProbesData.boxCenter[reflectionProbeCount] = visibleProbe.bounds.center;
                 data.reflectionProbesData.boxCenter[reflectionProbeCount].w = visibleProbe.importance;
                 data.reflectionProbesData.boxExtent[reflectionProbeCount] = visibleProbe.bounds.extents;
