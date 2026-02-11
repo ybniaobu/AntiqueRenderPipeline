@@ -19,19 +19,19 @@ namespace YPipeline.Editor
         private static readonly GUIContent k_FXAAModeText = EditorGUIUtility.TrTextContent("FXAA Mode", "快速近似抗锯齿模式，其中 console 模式性能开销相对较低但质量更差 Choose a FXAA mode, where the console mode has relatively lower performance overhead but inferior quality");
         
         // Lighting Settings
-        private static readonly GUIContent k_LightCullingSettingsHeader = EditorGUIUtility.TrTextContent("Light Culling Settings");
+        private static readonly GUIContent k_LightCullingSettingsHeader = EditorGUIUtility.TrTextContent("Light Culling");
         private static readonly GUIContent k_EnableSplitDepthText = EditorGUIUtility.TrTextContent("2.5D Culling", "是否激活分块灯光剔除中额外的深度剔除 If enabled, the 2.5D light culling method splits depth into cells to better handle depth discontinuities.");
 
-        private static readonly GUIContent k_ReflectionProbeSettingsHeader = EditorGUIUtility.TrTextContent("Reflection Probe Settings");
+        private static readonly GUIContent k_ReflectionProbeSettingsHeader = EditorGUIUtility.TrTextContent("Reflection Probe");
         private static readonly GUIContent k_ReflectionProbeQualityText = EditorGUIUtility.TrTextContent("Reflection Probe Quality", "反射探针质量，用于控制运行时每个探针的八面体贴图分辨率 Controls the octahedral map resolution of each reflection probe at runtime.");
         private static readonly GUIContent k_MaxReflectionProbesOnScreenText = EditorGUIUtility.TrTextContent("Max Reflection Probe Count On Screen", "屏幕空间中最大反射探针数量 Maximum amount of reflection probes in screen space.");
 
-        private static readonly GUIContent k_GlobalIlluminationSettingsHeader = EditorGUIUtility.TrTextContent("Global Illumination Settings");
+        private static readonly GUIContent k_GlobalIlluminationSettingsHeader = EditorGUIUtility.TrTextContent("Global Illumination");
         private static readonly GUIContent k_EnableScreenSpaceAmbientOcclusionText = EditorGUIUtility.TrTextContent("Screen Space Ambient Occlusion");
         private static readonly GUIContent k_EnableScreenSpaceGlobalIlluminationText =  EditorGUIUtility.TrTextContent("Screen Space Global Illumination");
         private static readonly GUIContent k_EnableScreenSpaceReflectionText =  EditorGUIUtility.TrTextContent("Screen Space Reflection");
         
-        private static readonly GUIContent k_APVSettingsHeader = EditorGUIUtility.TrTextContent("APV Settings");
+        private static readonly GUIContent k_APVSettingsHeader = EditorGUIUtility.TrTextContent("APV");
         private static readonly GUIContent k_ProbeVolumeSHBandsText = EditorGUIUtility.TrTextContent("SH Bands", "APV 使用的球谐光照阶数 The number of Spherical Harmonic bands used by Adaptive Probe Volumes to store lighting data. Choosing L2 provides better quality but with higher memory and runtime costs.");
         private static readonly GUIContent k_ProbeVolumeMemoryBudgetText = EditorGUIUtility.TrTextContent("Memory Budget", "球谐 3D 纹理的大小 Determines the width and height of the 3D textures used to store lighting data from probes. Depth is fixed.");
         private static readonly GUIContent k_SupportProbeVolumeGPUStreamingText = EditorGUIUtility.TrTextContent("GPU Streaming", "开启 GPU 流式传输 Enable streaming of Cells for Adaptive Probe Volumes.");
@@ -40,7 +40,7 @@ namespace YPipeline.Editor
         private static readonly GUIContent k_SupportProbeVolumeScenarioBlendingText = EditorGUIUtility.TrTextContent("Lighting Scenario Blending", "开启光照场景混合 Enable Lighting Scenario Blending for Adaptive Probe Volumes.");
         private static readonly GUIContent k_ProbeVolumeBlendingMemoryBudgetText = EditorGUIUtility.TrTextContent("Blending Memory Budget", "光照场景混合数据 3D 纹理的大小 Determines the width and height of the 3D textures used to store light scenario blending data from probes. Depth is fixed.");
         
-        private static readonly GUIContent k_ShadowSettingsHeader = EditorGUIUtility.TrTextContent("Shadow Settings");
+        private static readonly GUIContent k_ShadowSettingsHeader = EditorGUIUtility.TrTextContent("Shadow");
         private static readonly GUIContent k_ShadowModeText = EditorGUIUtility.TrTextContent("Shadow Mode", "选择阴影采样模式 PCF or PCSS");
         private static readonly GUIContent k_MaxShadowDistanceText = EditorGUIUtility.TrTextContent("Max Shadow Distance", "实时阴影最大渲染距离 Maximum realtime shadow rendering distance.");
         private static readonly GUIContent k_DistanceFadeText = EditorGUIUtility.TrTextContent("Distance Fade", "待删除参数！！");

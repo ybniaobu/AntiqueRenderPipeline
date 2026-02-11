@@ -48,22 +48,23 @@ namespace YPipeline.Editor
 
         private static void DrawLightingSettings(SerializedYRenderPipelineAsset serialized, UnityEditor.Editor owner)
         {
-            EditorGUILayout.LabelField(k_LightCullingSettingsHeader, EditorStyles.boldLabel);
+            EditorGUILayout.Space();
+            IMGUIUtils.DrawTitle(k_LightCullingSettingsHeader);
             EditorGUILayout.PropertyField(serialized.enableSplitDepth, k_EnableSplitDepthText);
             EditorGUILayout.Space();
             
-            EditorGUILayout.LabelField(k_ReflectionProbeSettingsHeader, EditorStyles.boldLabel);
+            IMGUIUtils.DrawTitle(k_ReflectionProbeSettingsHeader);
             EditorGUILayout.PropertyField(serialized.reflectionProbeQuality, k_ReflectionProbeQualityText);
             EditorGUILayout.PropertyField(serialized.maxReflectionProbesOnScreen, k_MaxReflectionProbesOnScreenText);
             EditorGUILayout.Space();
             
-            EditorGUILayout.LabelField(k_GlobalIlluminationSettingsHeader, EditorStyles.boldLabel);
+            IMGUIUtils.DrawTitle(k_GlobalIlluminationSettingsHeader);
             EditorGUILayout.PropertyField(serialized.enableScreenSpaceAmbientOcclusion, k_EnableScreenSpaceAmbientOcclusionText);
             EditorGUILayout.PropertyField(serialized.enableScreenSpaceGlobalIllumination, k_EnableScreenSpaceGlobalIlluminationText);
             EditorGUILayout.PropertyField(serialized.enableScreenSpaceReflection, k_EnableScreenSpaceReflectionText);
             EditorGUILayout.Space();
             
-            EditorGUILayout.LabelField(k_APVSettingsHeader, EditorStyles.boldLabel);
+            IMGUIUtils.DrawTitle(k_APVSettingsHeader);
             EditorGUILayout.PropertyField(serialized.probeVolumeSHBands, k_ProbeVolumeSHBandsText);
             EditorGUILayout.PropertyField(serialized.probeVolumeMemoryBudget, k_ProbeVolumeMemoryBudgetText);
             EditorGUILayout.PropertyField(serialized.supportProbeVolumeScenarios, k_SupportProbeVolumeScenariosText);
@@ -90,7 +91,7 @@ namespace YPipeline.Editor
             }
             EditorGUILayout.Space();
             
-            EditorGUILayout.LabelField(k_ShadowSettingsHeader, EditorStyles.boldLabel);
+            IMGUIUtils.DrawTitle(k_ShadowSettingsHeader);
             EditorGUILayout.PropertyField(serialized.shadowMode, k_ShadowModeText);
             EditorGUILayout.DelayedFloatField(serialized.maxShadowDistance, k_MaxShadowDistanceText);
             EditorGUILayout.PropertyField(serialized.distanceFade, k_DistanceFadeText);

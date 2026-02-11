@@ -87,8 +87,8 @@ namespace YPipeline
                         data.lightsData.sunLightShadowColor.w = light.shadowStrength;
                         data.lightsData.sunLightPenumbraColor = yLight.penumbraTint;
                         data.lightsData.sunLightShadowBias = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        data.lightsData.sunLightShadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
-                        data.lightsData.sunLightShadowParams2 = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.sunLightShadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
+                        data.lightsData.sunLightShadowParams2 = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingSunLightCount++;
                     }
                     sunLightCount++;
@@ -114,9 +114,9 @@ namespace YPipeline
                         data.lightsData.pointLightShadowColors[shadowingPointLightCount].w = light.shadowStrength;
                         data.lightsData.pointLightPenumbraColors[shadowingPointLightCount] = yLight.penumbraTint;
                         data.lightsData.pointLightShadowBias[shadowingPointLightCount] = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
+                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
                         data.lightsData.pointLightShadowParams[shadowingPointLightCount] = shadowParams;
-                        data.lightsData.pointLightShadowParams2[shadowingPointLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.pointLightShadowParams2[shadowingPointLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingPointLightCount++;
                     }
                     punctualLightCount++;
@@ -146,9 +146,9 @@ namespace YPipeline
                         data.lightsData.spotLightShadowColors[shadowingSpotLightCount].w = light.shadowStrength;
                         data.lightsData.spotLightPenumbraColors[shadowingSpotLightCount] = yLight.penumbraTint;
                         data.lightsData.spotLightShadowBias[shadowingSpotLightCount] = new Vector4(yLight.depthBias, yLight.slopeScaledDepthBias, yLight.normalBias, yLight.slopeScaledNormalBias);
-                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleNumber) : new Vector4(yLight.penumbraWidth, yLight.sampleNumber);
+                        Vector4 shadowParams = data.asset.shadowMode == ShadowMode.PCSS ? new Vector4(Mathf.Pow(10,yLight.penumbraScale), yLight.filterSampleCount) : new Vector4(yLight.penumbraWidth, yLight.sampleCount);
                         data.lightsData.spotLightShadowParams[shadowingSpotLightCount] = shadowParams;
-                        data.lightsData.spotLightShadowParams2[shadowingSpotLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleNumber, yLight.minPenumbraWidth);
+                        data.lightsData.spotLightShadowParams2[shadowingSpotLightCount] = new Vector4(yLight.lightSize, Mathf.Pow(10,yLight.blockerSearchAreaSizeScale), yLight.blockerSearchSampleCount, yLight.minPenumbraWidth);
                         shadowingSpotLightCount++;
                     }
                     punctualLightCount++;

@@ -39,7 +39,8 @@ float GetDistanceAttenuation(float3 lightVector, float lightRange, float attenua
     smoothFactor = lerp(smoothFactor, 1, attenuationScale);
     smoothFactor = lerp(smoothFactor, 0, isOutRange);
     
-    return (smoothFactor * smoothFactor) / max(distanceSquare, 1e-4);
+    return (smoothFactor * smoothFactor) / max(distanceSquare, 0.5); // 防止灯光离物体太近导致太亮
+    // return (smoothFactor * smoothFactor) / max(distanceSquare, 1e-4);
 }
 
 float GetAngleAttenuation(float3 L, float3 spotDirection, float2 spotAngleParams) // only for spot lights

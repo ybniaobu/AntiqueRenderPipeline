@@ -78,6 +78,14 @@ namespace YPipeline
                         rectangleLight.mode = LightMode.Baked;
                         lightData.Init(ref rectangleLight);
                         break;
+                    case LightType.Disc:
+                        DiscLight discLight = new DiscLight();
+                        LightmapperUtils.Extract(light, ref discLight);
+                        discLight.color.intensity /= Mathf.PI;
+                        discLight.indirectColor.intensity /= Mathf.PI;
+                        discLight.mode = LightMode.Baked;
+                        lightData.Init(ref discLight);
+                        break;
                     default:
                         lightData.InitNoBake(light.GetEntityId());
                         break;
