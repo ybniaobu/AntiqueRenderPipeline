@@ -24,7 +24,7 @@ namespace YPipeline.Editor
             DrawLightSettings(serialized, owner);
             
             CED.Group( 
-                CED.FoldoutGroup(k_ShadowSettingsHeader, Expandable.Shadow, k_ExpandedState, DrawShadowSettings)
+                CED.FoldoutGroup(k_ShadowSettingsHeader, Expandable.Shadow, k_ExpandedState, FoldoutOption.None, DrawShadowSettings)
             ).Draw(serialized, owner);
         }
         
@@ -148,10 +148,13 @@ namespace YPipeline.Editor
         private static void DrawShadowBiases(SerializedYPipelineLight serialized, UnityEditor.Editor owner)
         {
             IMGUIUtils.DrawTitle("Shadow Bias");
-            EditorGUILayout.PropertyField(serialized.depthBias, K_DepthBiasText);
-            EditorGUILayout.PropertyField(serialized.slopeScaledDepthBias, k_SlopeScaledDepthBiasText);
-            EditorGUILayout.PropertyField(serialized.normalBias, K_NormalBiasText);
-            EditorGUILayout.PropertyField(serialized.slopeScaledNormalBias, k_SlopeScaledNormalBiasText);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.depthBias, K_DepthBiasText);
+                EditorGUILayout.PropertyField(serialized.slopeScaledDepthBias, k_SlopeScaledDepthBiasText);
+                EditorGUILayout.PropertyField(serialized.normalBias, K_NormalBiasText);
+                EditorGUILayout.PropertyField(serialized.slopeScaledNormalBias, k_SlopeScaledNormalBiasText);
+            }
         }
         
         private static void DrawSoftShadowProperties(SerializedYPipelineLight serialized, UnityEditor.Editor owner)
@@ -161,18 +164,24 @@ namespace YPipeline.Editor
                 if (yAsset.shadowMode == ShadowMode.PCF)
                 {
                     IMGUIUtils.DrawTitle("PCF");
-                    EditorGUILayout.PropertyField(serialized.penumbraWidth, K_PenumbraWidthText);
-                    EditorGUILayout.PropertyField(serialized.sampleCount, K_SampleCountText);
+                    using (new EditorGUI.IndentLevelScope())
+                    {
+                        EditorGUILayout.PropertyField(serialized.penumbraWidth, K_PenumbraWidthText);
+                        EditorGUILayout.PropertyField(serialized.sampleCount, K_SampleCountText);
+                    }
                 }
                 else
                 {
                     IMGUIUtils.DrawTitle("PCSS");
-                    EditorGUILayout.PropertyField(serialized.lightSize, K_LightSizeText);
-                    EditorGUILayout.PropertyField(serialized.blockerSearchAreaSizeScale, K_BlockerSearchAreaSizeScaleText);
-                    EditorGUILayout.PropertyField(serialized.blockerSearchSampleCount, K_BlockerSearchSampleCountText);
-                    EditorGUILayout.PropertyField(serialized.penumbraScale, k_PenumbraScaleText);
-                    EditorGUILayout.PropertyField(serialized.minPenumbraWidth, k_MinPenumbraWidthText);
-                    EditorGUILayout.PropertyField(serialized.filterSampleCount, k_FilterSampleCountText);
+                    using (new EditorGUI.IndentLevelScope())
+                    {
+                        EditorGUILayout.PropertyField(serialized.lightSize, K_LightSizeText);
+                        EditorGUILayout.PropertyField(serialized.blockerSearchAreaSizeScale, K_BlockerSearchAreaSizeScaleText);
+                        EditorGUILayout.PropertyField(serialized.blockerSearchSampleCount, K_BlockerSearchSampleCountText);
+                        EditorGUILayout.PropertyField(serialized.penumbraScale, k_PenumbraScaleText);
+                        EditorGUILayout.PropertyField(serialized.minPenumbraWidth, k_MinPenumbraWidthText);
+                        EditorGUILayout.PropertyField(serialized.filterSampleCount, k_FilterSampleCountText);
+                    }
                 }
             }
         }

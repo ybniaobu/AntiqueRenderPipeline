@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2026-02-12
+
+This version is compatible with Unity 6000.3
+
+### Changed
+- Improved Camera Component Editor GUI.
+
 ## [0.1.1] - 2026-02-11
 
 This version is compatible with Unity 6000.3

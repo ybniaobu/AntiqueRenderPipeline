@@ -51,6 +51,7 @@ namespace YPipeline.Editor
             shadowsStrength = serializedObject.FindProperty("m_Shadows.m_Strength");
             shadowsNearPlane = serializedObject.FindProperty("m_Shadows.m_NearPlane");
             
+            // YPipeline Light Properties
             rangeAttenuationScale = serializedAdditionalDataObject.FindProperty("rangeAttenuationScale");
             
             shadowTint = serializedAdditionalDataObject.FindProperty("shadowTint");

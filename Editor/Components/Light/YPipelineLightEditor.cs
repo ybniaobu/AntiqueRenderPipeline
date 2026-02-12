@@ -13,7 +13,6 @@ namespace YPipeline.Editor
         private Light Light => target as Light;
         private YPipelineLight m_YPipelineLight;
         private SerializedYPipelineLight m_SerializedLight;
-        
 
         protected override void OnEnable()
         {

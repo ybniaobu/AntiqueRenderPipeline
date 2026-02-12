@@ -27,14 +27,14 @@ namespace YPipeline.Editor
             DrawModeSettings(serialized, owner);
             
             CED.Group( 
-                CED.FoldoutGroup(k_RuntimeSettingsHeader, Expandable.Runtime, k_ExpandedState, DrawRuntimeSettings),
-                CED.FoldoutGroup(k_CaptureSettingsHeader, Expandable.Capture, k_ExpandedState, DrawCaptureSettings),
-                CED.Group(DrawBakeAllButton),
-                CED.Group(DrawCubemapBakeButton),
-                CED.Group(DrawOctahedralBakeButton),
-                CED.Group(DrawSHBakeButton),
-                CED.FoldoutGroup(k_DebugSettingsHeader, Expandable.Debug, k_ExpandedState, DrawDebugSettings),
-                CED.Group(DrawInfo)
+                CED.FoldoutGroup(k_RuntimeSettingsHeader, Expandable.Runtime, k_ExpandedState, FoldoutOption.None, DrawRuntimeSettings),
+                CED.FoldoutGroup(k_CaptureSettingsHeader, Expandable.Capture, k_ExpandedState, FoldoutOption.None, DrawCaptureSettings),
+                CED.Group(GroupOption.None, DrawBakeAllButton),
+                CED.Group(GroupOption.None, DrawCubemapBakeButton),
+                CED.Group(GroupOption.None, DrawOctahedralBakeButton),
+                CED.Group(GroupOption.None, DrawSHBakeButton),
+                CED.FoldoutGroup(k_DebugSettingsHeader, Expandable.Debug, k_ExpandedState, FoldoutOption.None, DrawDebugSettings),
+                CED.Group(GroupOption.None, DrawInfo)
             ).Draw(serialized, owner);
         }
         

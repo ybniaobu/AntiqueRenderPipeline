@@ -21,9 +21,9 @@ namespace YPipeline.Editor
         public static void Draw(SerializedYRenderPipelineAsset serialized, UnityEditor.Editor owner)
         {
             CED.Group( 
-                CED.FoldoutGroup(k_RenderingSettingsHeader, Expandable.Rendering, k_ExpandedState, DrawRenderingSettings),
-                CED.FoldoutGroup(k_LightingSettingsHeader, Expandable.Lighting, k_ExpandedState, DrawLightingSettings),
-                CED.FoldoutGroup(k_PostProcessingSettingsHeader, Expandable.PostProcessing, k_ExpandedState, DrawPostProcessingSettings)
+                CED.FoldoutGroup(k_RenderingSettingsHeader, Expandable.Rendering, k_ExpandedState, FoldoutOption.None, DrawRenderingSettings),
+                CED.FoldoutGroup(k_LightingSettingsHeader, Expandable.Lighting, k_ExpandedState, FoldoutOption.None, DrawLightingSettings),
+                CED.FoldoutGroup(k_PostProcessingSettingsHeader, Expandable.PostProcessing, k_ExpandedState, FoldoutOption.None, DrawPostProcessingSettings)
             ).Draw(serialized, owner);
         }
         
@@ -50,36 +50,49 @@ namespace YPipeline.Editor
         {
             EditorGUILayout.Space();
             IMGUIUtils.DrawTitle(k_LightCullingSettingsHeader);
-            EditorGUILayout.PropertyField(serialized.enableSplitDepth, k_EnableSplitDepthText);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.enableSplitDepth, k_EnableSplitDepthText);
+            }
             EditorGUILayout.Space();
             
             IMGUIUtils.DrawTitle(k_ReflectionProbeSettingsHeader);
-            EditorGUILayout.PropertyField(serialized.reflectionProbeQuality, k_ReflectionProbeQualityText);
-            EditorGUILayout.PropertyField(serialized.maxReflectionProbesOnScreen, k_MaxReflectionProbesOnScreenText);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.reflectionProbeQuality, k_ReflectionProbeQualityText);
+                EditorGUILayout.PropertyField(serialized.maxReflectionProbesOnScreen, k_MaxReflectionProbesOnScreenText);
+            }
             EditorGUILayout.Space();
             
             IMGUIUtils.DrawTitle(k_GlobalIlluminationSettingsHeader);
-            EditorGUILayout.PropertyField(serialized.enableScreenSpaceAmbientOcclusion, k_EnableScreenSpaceAmbientOcclusionText);
-            EditorGUILayout.PropertyField(serialized.enableScreenSpaceGlobalIllumination, k_EnableScreenSpaceGlobalIlluminationText);
-            EditorGUILayout.PropertyField(serialized.enableScreenSpaceReflection, k_EnableScreenSpaceReflectionText);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.enableScreenSpaceAmbientOcclusion, k_EnableScreenSpaceAmbientOcclusionText);
+                EditorGUILayout.PropertyField(serialized.enableScreenSpaceGlobalIllumination, k_EnableScreenSpaceGlobalIlluminationText);
+                EditorGUILayout.PropertyField(serialized.enableScreenSpaceReflection, k_EnableScreenSpaceReflectionText);
+            }
             EditorGUILayout.Space();
             
             IMGUIUtils.DrawTitle(k_APVSettingsHeader);
-            EditorGUILayout.PropertyField(serialized.probeVolumeSHBands, k_ProbeVolumeSHBandsText);
-            EditorGUILayout.PropertyField(serialized.probeVolumeMemoryBudget, k_ProbeVolumeMemoryBudgetText);
-            EditorGUILayout.PropertyField(serialized.supportProbeVolumeScenarios, k_SupportProbeVolumeScenariosText);
-            EditorGUI.BeginDisabledGroup(!serialized.supportProbeVolumeScenarios.boolValue);
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(serialized.supportProbeVolumeScenarioBlending, k_SupportProbeVolumeScenarioBlendingText);
-            EditorGUILayout.PropertyField(serialized.probeVolumeBlendingMemoryBudget, k_ProbeVolumeBlendingMemoryBudgetText);
-            EditorGUI.indentLevel--;
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.PropertyField(serialized.supportProbeVolumeGPUStreaming, k_SupportProbeVolumeGPUStreamingText);
-            EditorGUI.BeginDisabledGroup(!serialized.supportProbeVolumeGPUStreaming.boolValue);
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(serialized.supportProbeVolumeDiskStreaming, k_SupportProbeVolumeDiskStreamingText);
-            EditorGUI.indentLevel--;
-            EditorGUI.EndDisabledGroup();
+            
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.probeVolumeSHBands, k_ProbeVolumeSHBandsText);
+                EditorGUILayout.PropertyField(serialized.probeVolumeMemoryBudget, k_ProbeVolumeMemoryBudgetText);
+                EditorGUILayout.PropertyField(serialized.supportProbeVolumeScenarios, k_SupportProbeVolumeScenariosText);
+                EditorGUI.BeginDisabledGroup(!serialized.supportProbeVolumeScenarios.boolValue);
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(serialized.supportProbeVolumeScenarioBlending, k_SupportProbeVolumeScenarioBlendingText);
+                EditorGUILayout.PropertyField(serialized.probeVolumeBlendingMemoryBudget, k_ProbeVolumeBlendingMemoryBudgetText);
+                EditorGUI.indentLevel--;
+                EditorGUI.EndDisabledGroup();
+                EditorGUILayout.PropertyField(serialized.supportProbeVolumeGPUStreaming, k_SupportProbeVolumeGPUStreamingText);
+                EditorGUI.BeginDisabledGroup(!serialized.supportProbeVolumeGPUStreaming.boolValue);
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(serialized.supportProbeVolumeDiskStreaming, k_SupportProbeVolumeDiskStreamingText);
+                EditorGUI.indentLevel--;
+                EditorGUI.EndDisabledGroup();
+            }
             int estimatedVMemCost = ProbeReferenceVolume.instance.GetVideoMemoryCost();
             if (estimatedVMemCost == 0)
             {
@@ -92,19 +105,22 @@ namespace YPipeline.Editor
             EditorGUILayout.Space();
             
             IMGUIUtils.DrawTitle(k_ShadowSettingsHeader);
-            EditorGUILayout.PropertyField(serialized.shadowMode, k_ShadowModeText);
-            EditorGUILayout.DelayedFloatField(serialized.maxShadowDistance, k_MaxShadowDistanceText);
-            EditorGUILayout.PropertyField(serialized.distanceFade, k_DistanceFadeText);
-            EditorGUILayout.PropertyField(serialized.cascadeCount, k_CascadeCountText);
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(serialized.spiltRatio1, k_SpiltRatio1Text);
-            EditorGUILayout.PropertyField(serialized.spiltRatio2, k_SpiltRatio2Text);
-            EditorGUILayout.PropertyField(serialized.spiltRatio3, k_SpiltRatio3Text);
-            EditorGUI.indentLevel--;
-            EditorGUILayout.PropertyField(serialized.cascadeEdgeFade, k_CascadeEdgeFadeText);
-            EditorGUILayout.PropertyField(serialized.sunLightShadowMapSize, k_SunLightShadowMapSizeText);
-            EditorGUILayout.PropertyField(serialized.spotLightShadowMapSize, k_SpotLightShadowMapSizeText);
-            EditorGUILayout.PropertyField(serialized.pointLightShadowMapSize, k_PointLightShadowMapSizeText);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(serialized.shadowMode, k_ShadowModeText);
+                EditorGUILayout.DelayedFloatField(serialized.maxShadowDistance, k_MaxShadowDistanceText);
+                EditorGUILayout.PropertyField(serialized.distanceFade, k_DistanceFadeText);
+                EditorGUILayout.PropertyField(serialized.cascadeCount, k_CascadeCountText);
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(serialized.spiltRatio1, k_SpiltRatio1Text);
+                EditorGUILayout.PropertyField(serialized.spiltRatio2, k_SpiltRatio2Text);
+                EditorGUILayout.PropertyField(serialized.spiltRatio3, k_SpiltRatio3Text);
+                EditorGUI.indentLevel--;
+                EditorGUILayout.PropertyField(serialized.cascadeEdgeFade, k_CascadeEdgeFadeText);
+                EditorGUILayout.PropertyField(serialized.sunLightShadowMapSize, k_SunLightShadowMapSizeText);
+                EditorGUILayout.PropertyField(serialized.spotLightShadowMapSize, k_SpotLightShadowMapSizeText);
+                EditorGUILayout.PropertyField(serialized.pointLightShadowMapSize, k_PointLightShadowMapSizeText);
+            }
         }
 
         private static void DrawPostProcessingSettings(SerializedYRenderPipelineAsset serialized, UnityEditor.Editor owner)
