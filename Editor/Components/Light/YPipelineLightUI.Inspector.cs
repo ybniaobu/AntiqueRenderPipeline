@@ -7,7 +7,7 @@ namespace YPipeline.Editor
 {
     using CED = CoreEditorDrawer<SerializedYPipelineLight>;
     
-    public static partial class YPipelineLightUI
+    internal static partial class YPipelineLightUI
     {
         private enum Expandable
         {
@@ -148,17 +148,44 @@ namespace YPipeline.Editor
                 serialized.settings.shadowsType.enumValueIndex = shadowEnabled ? (int) LightShadows.Soft: (int) LightShadows.None;
             }
 
-            // using (new EditorGUI.DisabledScope(!shadowEnabled))
+            if (serialized.settings.light.type != LightType.Directional && GraphicsSettings.currentRenderPipeline is YRenderPipelineAsset yAsset)
             {
-                // Resolution 暂时由 Asset 控制，后续修改时再在这里添加
-                
-                EditorGUILayout.Slider(serialized.settings.shadowsStrength, 0.0f, 1.0f, k_ShadowsStrengthText);
-                float nearPlaneMinBound = Mathf.Min(0.01f * serialized.settings.range.floatValue, 0.1f);
-                EditorGUILayout.Slider(serialized.settings.shadowsNearPlane, nearPlaneMinBound, 10.0f, k_ShadowsNearPlaneText);
-                
-                EditorGUILayout.PropertyField(serialized.shadowTint, K_ShadowTintText);
-                EditorGUILayout.PropertyField(serialized.penumbraTint, K_PenumbraTintText);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    showMixed = serialized.shadowResolution.hasMultipleDifferentValues;
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUI.showMixedValue = showMixed;
+                    int trueOldResolution = serialized.shadowResolution.intValue;
+                    int oldResolution = yAsset.punctualLightShadowQuality switch
+                    {
+                        Quality3Tier.Low => trueOldResolution * 2,
+                        Quality3Tier.Medium => trueOldResolution,
+                        Quality3Tier.High => trueOldResolution / 2,
+                        _ => trueOldResolution
+                    };
+                    int resolution = EditorGUILayout.IntPopup(k_ShadowResolutionText, oldResolution, k_ShadowResolutionTitles, k_ShadowResolutionValues);
+                    EditorGUI.showMixedValue = false;
+                    int trueResolution = yAsset.punctualLightShadowQuality switch
+                    {
+                        Quality3Tier.Low => resolution / 2,
+                        Quality3Tier.Medium => resolution,
+                        Quality3Tier.High => resolution * 2,
+                        _ => resolution
+                    };
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        serialized.shadowResolution.intValue = trueResolution;
+                    }
+                    EditorGUILayout.LabelField($"Shadow Quality: {yAsset.punctualLightShadowQuality} -> {trueResolution}", GUILayout.ExpandWidth(false));
+                }
             }
+
+            EditorGUILayout.Slider(serialized.settings.shadowsStrength, 0.0f, 1.0f, k_ShadowsStrengthText);
+            float nearPlaneMinBound = Mathf.Min(0.01f * serialized.settings.range.floatValue, 0.1f);
+            EditorGUILayout.Slider(serialized.settings.shadowsNearPlane, nearPlaneMinBound, 10.0f, k_ShadowsNearPlaneText);
+            
+            EditorGUILayout.PropertyField(serialized.shadowTint, K_ShadowTintText);
+            EditorGUILayout.PropertyField(serialized.penumbraTint, K_PenumbraTintText);
         }
 
         private static void DrawShadowBiasesSubFoldout(SerializedYPipelineLight serialized, UnityEditor.Editor owner)
@@ -186,7 +213,15 @@ namespace YPipeline.Editor
 
         private static void DrawPCSSSubFoldout(SerializedYPipelineLight serialized, UnityEditor.Editor owner)
         {
-            EditorGUILayout.PropertyField(serialized.lightSize, K_LightSizeText);
+            if (serialized.settings.light.type == LightType.Directional)
+            {
+                EditorGUILayout.PropertyField(serialized.angularDiameter, K_AngularDiameterText);
+            }
+            else
+            {
+                EditorGUILayout.PropertyField(serialized.lightRadius, K_LightRadiusText);
+            }
+            
             EditorGUILayout.PropertyField(serialized.blockerSearchAreaSizeScale, K_BlockerSearchAreaSizeScaleText);
             EditorGUILayout.PropertyField(serialized.blockerSearchSampleCount, K_BlockerSearchSampleCountText);
             EditorGUILayout.PropertyField(serialized.penumbraScale, k_PenumbraScaleText);

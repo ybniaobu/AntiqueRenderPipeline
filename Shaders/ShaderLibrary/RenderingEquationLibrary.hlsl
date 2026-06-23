@@ -80,7 +80,6 @@ void StandardPBRShading(in GeometryParams geometryParams, in StandardPBRParams s
         
         LightParams punctualLightParams = (LightParams) 0;
         
-        UNITY_BRANCH
         if (GetPunctualLightType(lightIndex) == SPOT_LIGHT) InitializeSpotLightParams(punctualLightParams, lightIndex, standardPBRParams.V, standardPBRParams.N, geometryParams.positionWS, geometryParams.pixelCoord);
         else if (GetPunctualLightType(lightIndex) == POINT_LIGHT) InitializePointLightParams(punctualLightParams, lightIndex, standardPBRParams.V, standardPBRParams.N, geometryParams.positionWS, geometryParams.pixelCoord);
     

@@ -1,6 +1,8 @@
 ﻿#ifndef YPIPELINE_UPSAMPLE_LIBRARY_INCLUDED
 #define YPIPELINE_UPSAMPLE_LIBRARY_INCLUDED
 
+#include "DenoiseLibrary.hlsl"
+
 // Gather 的顺序问题可以参考这篇文章：https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
 
 // Gather Order (DirectX HLSL)
@@ -19,6 +21,80 @@ static const float4 k_BilinearWeights[4] =
 };
 
 // ----------------------------------------------------------------------------------------------------
+// Depth & Normal-Aware Bilateral Upsample Functions
+// ----------------------------------------------------------------------------------------------------
+
+// Uniform weight, color3 version (don't consider bilinear weight)
+// 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
+float3 DepthNormalAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, 
+    float3 fullNormal, float3 normal01, float3 normal11, float3 normal10, float3 normal00,
+    float3 color01, float3 color11, float3 color10, float3 color00)
+{
+    float4 weights = DepthWeights(halfDepths, fullDepth, depthThreshold);
+    weights.x *= NormalWeight(normal01, fullNormal);
+    weights.y *= NormalWeight(normal11, fullNormal);
+    weights.z *= NormalWeight(normal10, fullNormal);
+    weights.w *= NormalWeight(normal00, fullNormal);
+    float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
+    float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
+    float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
+    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
+}
+
+// Uniform weight, single channel version (don't consider bilinear weight)
+// 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
+float DepthNormalAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, 
+    float3 fullNormal, float3 normal01, float3 normal11, float3 normal10, float3 normal00,
+    float4 values)
+{
+    float4 weights = DepthWeights(halfDepths, fullDepth, depthThreshold);
+    weights.x *= NormalWeight(normal01, fullNormal);
+    weights.y *= NormalWeight(normal11, fullNormal);
+    weights.z *= NormalWeight(normal10, fullNormal);
+    weights.w *= NormalWeight(normal00, fullNormal);
+    float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
+    float weightedValueSum = dot(values, weights);
+    float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
+}
+
+// Bilinear weight, color3 version
+// 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
+float3 DepthNormalAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, 
+    float3 fullNormal, float3 normal01, float3 normal11, float3 normal10, float3 normal00,
+    float3 color01, float3 color11, float3 color10, float3 color00, int orderIndex)
+{
+    float4 depthWeights = DepthWeights(halfDepths, fullDepth, depthThreshold);
+    depthWeights.x *= NormalWeight(normal01, fullNormal);
+    depthWeights.y *= NormalWeight(normal11, fullNormal);
+    depthWeights.z *= NormalWeight(normal10, fullNormal);
+    depthWeights.w *= NormalWeight(normal00, fullNormal);
+    float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
+    float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
+    float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
+    float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
+    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
+}
+
+// Bilinear weight, single channel version
+// 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
+float DepthNormalAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, 
+    float3 fullNormal, float3 normal01, float3 normal11, float3 normal10, float3 normal00,
+    float4 values, int orderIndex)
+{
+    float4 depthWeights = DepthWeights(halfDepths, fullDepth, depthThreshold);
+    depthWeights.x *= NormalWeight(normal01, fullNormal);
+    depthWeights.y *= NormalWeight(normal11, fullNormal);
+    depthWeights.z *= NormalWeight(normal10, fullNormal);
+    depthWeights.w *= NormalWeight(normal00, fullNormal);
+    float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
+    float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
+    float weightedValueSum = dot(values, weights);
+    float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
+}
+
+// ----------------------------------------------------------------------------------------------------
 // Depth-Aware Bilateral Upsample Functions
 // ----------------------------------------------------------------------------------------------------
 
@@ -26,11 +102,10 @@ static const float4 k_BilinearWeights[4] =
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
 float3 DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00)
 {
-    bool4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
-    weights = weights || abs(halfDepths - fullDepth) < depthThreshold.x;
+    bool4 weights = DepthWeights(halfDepths, fullDepth, depthThreshold);
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
-    float3 fallBackColor = (color01 + color11 + color10 + color00) / 4;
+    float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
     return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
 }
 
@@ -38,8 +113,7 @@ float3 DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDept
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
 float DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth, float4 halfDepths, float4 values)
 {
-    bool4 weights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
-    weights = weights || abs(halfDepths - fullDepth) < depthThreshold.x;
+    bool4 weights = DepthWeights(halfDepths, fullDepth, depthThreshold);
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);
     float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
@@ -50,8 +124,7 @@ float DepthAwareBilateralUpsample_Uniform(float2 depthThreshold, float fullDepth
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
 float3 DepthAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, float3 color01, float3 color11, float3 color10, float3 color00, int orderIndex)
 {
-    bool4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
-    depthWeights = depthWeights || abs(halfDepths - fullDepth) < depthThreshold.x;
+    bool4 depthWeights = DepthWeights(halfDepths, fullDepth, depthThreshold);
     float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
@@ -63,8 +136,7 @@ float3 DepthAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float
 // 使用时注意顺序问题，halfDepths 默认是 Gather 的顺序
 float DepthAwareBilateralUpsample(float2 depthThreshold, float fullDepth, float4 halfDepths, float4 values, int orderIndex)
 {
-    bool4 depthWeights = abs(1.0 - halfDepths / fullDepth) < depthThreshold.y;
-    depthWeights = depthWeights || abs(halfDepths - fullDepth) < depthThreshold.x;
+    bool4 depthWeights = DepthWeights(halfDepths, fullDepth, depthThreshold);
     float4 weights = k_BilinearWeights[orderIndex] * depthWeights;
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);

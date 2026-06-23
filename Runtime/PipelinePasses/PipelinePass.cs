@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 namespace YPipeline
 {
-    public abstract class PipelinePass
+    internal abstract class PipelinePass
     {
         /// <summary>
         /// 创建 PipelinePass 实例并初始化

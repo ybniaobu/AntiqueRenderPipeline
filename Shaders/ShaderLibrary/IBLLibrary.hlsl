@@ -56,6 +56,26 @@ float3 EvaluateAmbientProbe(float3 N) // 名字不能乱改，该函数覆写掉
 //     return L0L1 + L2;
 // }
 
+float3 EvaluateRawAmbientProbe(float3 N) // 得到乘上 intensity 前的 SH
+{
+    float3 L0L1;
+    float4 vA = float4(N, 1.0);
+    L0L1.r = dot(_AmbientProbe[0], vA);
+    L0L1.g = dot(_AmbientProbe[2], vA);
+    L0L1.b = dot(_AmbientProbe[4], vA);
+
+    float3 L2;
+    float4 vB = N.xyzz * N.yzzx;
+    L2.r = dot(_AmbientProbe[1], vB);
+    L2.g = dot(_AmbientProbe[3], vB);
+    L2.b = dot(_AmbientProbe[5], vB);
+    
+    float vC = N.x * N.x - N.y * N.y;
+    L2 += _AmbientProbe[6].rgb * vC;
+
+    return (L0L1 + L2) / (_AmbientProbe[6].a + 1e-6);
+}
+
 // ----------------------------------------------------------------------------------------------------
 // IBL Utilities
 // ----------------------------------------------------------------------------------------------------

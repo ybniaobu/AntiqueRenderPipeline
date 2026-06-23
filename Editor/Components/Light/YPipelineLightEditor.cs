@@ -8,7 +8,7 @@ namespace YPipeline.Editor
     [CanEditMultipleObjects]
     [CustomEditor(typeof(Light))]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class YPipelineLightEditor : LightEditor
+    internal sealed class YPipelineLightEditor : LightEditor
     {
         private Light Light => target as Light;
         private YPipelineLight m_YPipelineLight;

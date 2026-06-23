@@ -6,7 +6,7 @@ using YPipeline;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(ToneMapping))]
-    public class ToneMappingEditor : VolumeComponentEditor
+    internal sealed class ToneMappingEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_Mode;
         private SerializedDataParameter m_ReinhardMode;

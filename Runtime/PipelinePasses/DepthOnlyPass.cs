@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class DepthOnlyPass : PipelinePass
+    internal sealed class DepthOnlyPass : PipelinePass
     {
         private class DepthOnlyPassData
         {
@@ -44,10 +44,8 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((DepthOnlyPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (DepthOnlyPassData data, RasterGraphContext context) =>
                 {
-                    // context.cmd.SetRenderTarget(data.depthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-                    
                     context.cmd.DrawRendererList(data.opaqueRendererList);
                     context.cmd.DrawRendererList(data.alphaTestRendererList);
                 });

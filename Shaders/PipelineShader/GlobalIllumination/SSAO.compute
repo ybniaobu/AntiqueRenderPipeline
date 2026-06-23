@@ -14,30 +14,31 @@
 // --- Textures & Samplers ---
 RWTexture2D<float2> _OutputTexture;
 Texture2D<float2> _InputTexture;
+Texture2D<float> _HalfDepthTexture;
+Texture2D<float4> _HalfNormalRoughnessTexture;
+Texture2D<float> _CameraDepthTexture;
+Texture2D<float4> _GBuffer1;
+Texture2D<float4> _ThinGBuffer;
+
+Texture2D<float4> _BlueNoise;
+float4 _BlueNoise_TexelSize;
+SAMPLER(sampler_LinearClamp);
+SAMPLER(sampler_PointClamp);
 
 #ifdef _HALF_RESOLUTION
-    Texture2D<float> _HalfDepthTexture;
     #define DEPTH_TEX _HalfDepthTexture
-    Texture2D<float4> _HalfNormalRoughnessTexture;
     #define NORMAL_TEX _HalfNormalRoughnessTexture
 #else
-    TEXTURE2D(_CameraDepthTexture);
     #define DEPTH_TEX _CameraDepthTexture
     #ifdef _DEFERRED_RENDERING
-        TEXTURE2D(_GBuffer1);
         #define NORMAL_TEX _GBuffer1
     #else
-        TEXTURE2D(_ThinGBuffer);
         #define NORMAL_TEX _ThinGBuffer
     #endif
 #endif
 
 #define NOISE_TEX _BlueNoise
 #define NOISE_TEX_TEXEL_SIZE _BlueNoise_TexelSize
-TEXTURE2D(NOISE_TEX);
-float4 NOISE_TEX_TEXEL_SIZE;
-SAMPLER(sampler_LinearClamp);
-SAMPLER(sampler_PointClamp);
 
 // --- Global Variables ---
 float4 _CameraSettings; // x: vertical FOV in radian, y: cot(FOV/2)

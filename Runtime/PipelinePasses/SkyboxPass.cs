@@ -4,7 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class SkyboxPass : PipelinePass
+    internal sealed class SkyboxPass : PipelinePass
     {
         private class SkyboxPassData
         {
@@ -27,7 +27,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((SkyboxPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (SkyboxPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.skyboxRendererList);
                 });

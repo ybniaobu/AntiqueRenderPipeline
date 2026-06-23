@@ -4,9 +4,9 @@ using UnityEngine.Rendering;
 
 namespace YPipeline
 {
-    public class YPipelinePerCameraData : IDisposable
+    internal sealed class YPipelinePerCameraData : IDisposable
     {
-        private bool m_IsPerCameraDataReset;
+        private bool m_IsPerCameraDataReset = true;
         
         // ----------------------------------------------------------------------------------------------------
         // Matrices
@@ -49,7 +49,8 @@ namespace YPipeline
 
         public RTHandle GetTAAHistory(ref RenderTextureDescriptor desc, string name = "TAA History")
         {
-            if (m_TAAHistory == null || m_TAAHistory.rt.width != desc.width || m_TAAHistory.rt.height != desc.height)
+            if (m_TAAHistory == null || m_TAAHistory.rt.width != desc.width || m_TAAHistory.rt.height != desc.height 
+                || m_TAAHistory.rt.graphicsFormat != desc.graphicsFormat)
             {
                 IsTAAHistoryReset = true;
                 m_TAAHistory?.Release();
@@ -73,7 +74,8 @@ namespace YPipeline
 
         public RTHandle GetSceneHistory(ref RenderTextureDescriptor desc, string name = "Scene History")
         {
-            if (m_SceneHistory == null || m_SceneHistory.rt.width != desc.width || m_SceneHistory.rt.height != desc.height)
+            if (m_SceneHistory == null || m_SceneHistory.rt.width != desc.width || m_SceneHistory.rt.height != desc.height 
+                || m_SceneHistory.rt.graphicsFormat != desc.graphicsFormat)
             {
                 IsSceneHistoryReset = true;
                 m_SceneHistory?.Release();
@@ -97,7 +99,8 @@ namespace YPipeline
 
         public RTHandle GetIrradianceHistory(ref RenderTextureDescriptor desc, string name = "Irradiance History")
         {
-            if (m_IrradianceHistory == null || m_IrradianceHistory.rt.width != desc.width || m_IrradianceHistory.rt.height != desc.height)
+            if (m_IrradianceHistory == null || m_IrradianceHistory.rt.width != desc.width || m_IrradianceHistory.rt.height != desc.height 
+                || m_IrradianceHistory.rt.graphicsFormat != desc.graphicsFormat)
             {
                 IsIrradianceHistoryReset = true;
                 m_IrradianceHistory?.Release();
@@ -137,44 +140,17 @@ namespace YPipeline
         }
         
         // ----------------------------------------------------------------------------------------------------
-        // Standard Dispose Pattern
+        // Dispose
         // ----------------------------------------------------------------------------------------------------
-        
-        bool m_Disposed = false;
-        
-        public YPipelinePerCameraData()
-        {
-            m_IsPerCameraDataReset = true;
-        }
-        
+
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        ~YPipelinePerCameraData()
-        {
-            Dispose(false);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!m_Disposed)
-            {
-                if (disposing)
-                {
-                    //Dispose managed resources
-                }
-                //Dispose unmanaged resources
-                ReleaseTAAHistory();
-                ReleaseSceneHistory();
-                ReleaseIrradianceHistory();
-                ReleaseAOHistory();
-            }
+            ReleaseTAAHistory();
+            ReleaseSceneHistory();
+            ReleaseIrradianceHistory();
+            ReleaseAOHistory();
             
             m_IsPerCameraDataReset = true;
-            m_Disposed = true;
         }
     }
 }

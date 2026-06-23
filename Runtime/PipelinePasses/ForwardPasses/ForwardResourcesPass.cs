@@ -5,16 +5,11 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class ForwardResourcesPass : PipelinePass
+    internal sealed class ForwardResourcesPass : PipelinePass
     {
         private class ForwardResourcesPassData
         {
-            // Global Constant Buffer Variables
-            public Vector2Int bufferSize;
-            public Vector4 jitter;
-            public Vector4 timeParams;
-            public Vector4 cascadeSettings;
-            public Vector4 shadowMapSizes;
+            public bool isIrradianceTextureCreated;
         }
         
         private RTHandle m_CameraColorTarget;
@@ -73,7 +68,6 @@ namespace YPipeline
                 // ----------------------------------------------------------------------------------------------------
                 
                 Vector2Int bufferSize = data.BufferSize;
-                passData.bufferSize = bufferSize;
                 
                 TextureDesc colorAttachmentDesc = new TextureDesc(bufferSize.x,bufferSize.y)
                 {
@@ -88,8 +82,8 @@ namespace YPipeline
                 {
                     colorFormat = GraphicsFormat.R16G16B16A16_SFloat,
                     filterMode = FilterMode.Bilinear,
-                    clearBuffer = true,
-                    clearColor = Color.clear,
+                    // clearBuffer = true,
+                    // clearColor = Color.clear,
                     name = "Color Texture"
                 };
                 
@@ -105,7 +99,7 @@ namespace YPipeline
                 {
                     depthBufferBits = DepthBits.Depth32,
                     filterMode = FilterMode.Point,
-                    clearBuffer = true,
+                    // clearBuffer = true,
                     name = "Depth Texture"
                 };
                 
@@ -115,7 +109,7 @@ namespace YPipeline
                 data.CameraDepthTexture = data.renderGraph.CreateTexture(depthTextureDesc);
                 
                 // ----------------------------------------------------------------------------------------------------
-                // Other Textures
+                // Thin GBuffer
                 // ----------------------------------------------------------------------------------------------------
                 
                 TextureDesc thinGBufferDesc = new TextureDesc(bufferSize.x, bufferSize.y)
@@ -127,6 +121,30 @@ namespace YPipeline
                 };
                 
                 data.ThinGBuffer = data.renderGraph.CreateTexture(thinGBufferDesc);
+                
+                // ----------------------------------------------------------------------------------------------------
+                // Irradiance RT
+                // ----------------------------------------------------------------------------------------------------
+                
+                bool isIrradianceTextureCreated = data.IsSSGIEnabled || data.IsScreenSpaceIrradianceEnabled;
+                data.isIrradianceTextureCreated = isIrradianceTextureCreated;
+                passData.isIrradianceTextureCreated = isIrradianceTextureCreated;
+                if (isIrradianceTextureCreated)
+                {
+                    TextureDesc irradianceTextureDesc = new TextureDesc(bufferSize.x, bufferSize.y)
+                    {
+                        format = GraphicsFormat.R16G16B16A16_SFloat,
+                        filterMode = FilterMode.Bilinear,
+                        clearBuffer = false,
+                        enableRandomWrite = true,
+                        name = "Irradiance Texture"
+                    };
+                    data.IrradianceTexture = data.renderGraph.CreateTexture(irradianceTextureDesc);
+                }
+                
+                // ----------------------------------------------------------------------------------------------------
+                // Scene History
+                // ----------------------------------------------------------------------------------------------------
 
                 YPipelineCamera yCamera = data.camera.GetYPipelineCamera();
                 if (data.IsTAAEnabled)
@@ -166,31 +184,14 @@ namespace YPipeline
                     yCamera.perCameraData.ReleaseSceneHistory();
                 }
                 
-                // ----------------------------------------------------------------------------------------------------
-                // Global Constant Buffer Variables
-                // ----------------------------------------------------------------------------------------------------
-                int frameCount = Time.frameCount;
-                
-                Vector2 jitter = RandomUtils.k_Halton[frameCount % 64 + 1] - new Vector2(0.5f, 0.5f);
-                passData.jitter = new Vector4(1.0f / jitter.x, 1.0f / jitter.y, jitter.x, jitter.y);
-                passData.timeParams = new Vector4(frameCount, 1.0f / frameCount);
-                passData.cascadeSettings = new Vector4(data.asset.maxShadowDistance, data.asset.distanceFade, data.asset.cascadeCount, data.asset.cascadeEdgeFade);
-                passData.shadowMapSizes = new Vector4((int) data.asset.sunLightShadowMapSize, (int) data.asset.spotLightShadowMapSize, (int) data.asset.pointLightShadowMapSize);
-                
                 builder.AllowPassCulling(false);
                 builder.AllowGlobalStateModification(true);
                 
-                builder.SetRenderFunc((ForwardResourcesPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (ForwardResourcesPassData data, RasterGraphContext context) =>
                 {
                     CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_EditorPreview, false);
-                    
-                    GlobalKeyword deferredKeyword = GlobalKeyword.Create(YPipelineKeywords.k_DeferredRendering);
-                    context.cmd.SetKeyword(deferredKeyword, false);
-                    context.cmd.SetGlobalVector(YPipelineShaderIDs.k_BufferSizeID, new Vector4(1f / data.bufferSize.x, 1f / data.bufferSize.y, data.bufferSize.x, data.bufferSize.y));
-                    context.cmd.SetGlobalVector(YPipelineShaderIDs.k_JitterID, data.jitter);
-                    context.cmd.SetGlobalVector(YPipelineShaderIDs.k_TimeParams,data.timeParams);
-                    context.cmd.SetGlobalVector(YPipelineShaderIDs.k_CascadeSettingsID, data.cascadeSettings);
-                    context.cmd.SetGlobalVector(YPipelineShaderIDs.k_ShadowMapSizesID, data.shadowMapSizes);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_DeferredRendering, false);
+                    CoreUtils.SetKeyword(context.cmd, YPipelineKeywords.k_ScreenSpaceIrradiance, data.isIrradianceTextureCreated);
                 });
             }
         }

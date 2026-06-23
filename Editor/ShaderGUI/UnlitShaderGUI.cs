@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace YPipeline.Editor
 {
-    public class UnlitShaderGUI : YPipelineBaseShaderGUI
+    internal class UnlitShaderGUI : YPipelineBaseShaderGUI
     {
         protected override bool ShowDefaultGUI => true;
         

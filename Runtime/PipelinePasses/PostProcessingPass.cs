@@ -8,7 +8,7 @@ using UnityEditor;
 
 namespace YPipeline
 {
-    public class PostProcessingPass : PipelinePass
+    internal sealed class PostProcessingPass : PipelinePass
     {
         private class PostProcessingPassData
         {
@@ -67,7 +67,7 @@ namespace YPipeline
                 passData.cameraColorTarget = data.CameraColorTarget;
                 builder.UseTexture(data.CameraColorTarget, AccessFlags.Write);
                 
-                builder.SetRenderFunc((PostProcessingPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (PostProcessingPassData data, UnsafeGraphContext context) =>
                 {
                     // disable post-processing in material preview and reflection probe preview
                     if (data.cameraType > CameraType.SceneView)

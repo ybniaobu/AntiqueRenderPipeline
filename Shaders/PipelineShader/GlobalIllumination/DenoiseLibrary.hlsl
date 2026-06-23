@@ -7,16 +7,30 @@
 // Bilateral Denoise Functions
 // ----------------------------------------------------------------------------------------------------
 
+inline bool DepthWeight(float depth, float baseDepth, float2 depthThreshold)
+{
+    bool depthTest = abs(1 - depth / baseDepth) < depthThreshold.y;
+    depthTest = depthTest || abs(depth - baseDepth) < depthThreshold.x;
+    return depthTest;
+}
+
+inline bool4 DepthWeights(float4 depths, float baseDepth, float2 depthThreshold)
+{
+    bool4 depthWeights = abs(1.0 - depths / baseDepth) < depthThreshold.y;
+    depthWeights = depthWeights || abs(depths - baseDepth) < depthThreshold.x;
+    return depthWeights;
+}
+
+// space weight & depth weight
 inline float BilateralWeight(float radius, float depth, float middleDepth, float sigma, float2 depthThreshold)
 {
-    bool depthTest = abs(1 - depth / middleDepth) < depthThreshold.y;
-    depthTest = depthTest || abs(depth - middleDepth) < depthThreshold.x;
+    bool depthTest = DepthWeight(depth, middleDepth, depthThreshold);
     return exp2(-radius * radius * rcp(2.0 * sigma.x * sigma.x)) * depthTest;
 }
 
-inline float NormalWeight(float3 normal, float3 middleNormal)
+inline float NormalWeight(float3 normal, float3 baseNormal)
 {
-    float normalDelta = saturate(dot(normal, middleNormal));
+    float normalDelta = saturate(dot(normal, baseNormal));
     return normalDelta * normalDelta;
 }
 
@@ -96,8 +110,7 @@ float3 BilateralFilterColor(in float4 neighbours[9], float2 depthThreshold)
     {
         float3 sampleColor = neighbours[i + 1].rgb;
         float sampleDepth = neighbours[i + 1].a;
-        bool occlusionTest = abs(1 - sampleDepth / middleDepth) < depthThreshold.y;
-        occlusionTest = occlusionTest || abs(sampleDepth - middleDepth) < depthThreshold.x;
+        bool occlusionTest = DepthWeight(sampleDepth, middleDepth, depthThreshold);
         float weight = rcp(GetLuma(sampleColor) + 1.0) * weights[i + 1] * occlusionTest;
         weightSum += weight;
         filtered += weight * sampleColor;
@@ -121,8 +134,7 @@ float BilateralFilterAO(in float2 neighbours[9], float2 depthThreshold)
     {
         float sampleAO = neighbours[i + 1].r;
         float sampleDepth = neighbours[i + 1].g;
-        bool occlusionTest = abs(1 - sampleDepth / middleDepth) < depthThreshold.y;
-        occlusionTest = occlusionTest || abs(sampleDepth - middleDepth) < depthThreshold.x;
+        bool occlusionTest = DepthWeight(sampleDepth, middleDepth, depthThreshold);
         float weight = weights[i + 1] * occlusionTest;
         weightSum += weight;
         filtered += weight * sampleAO;

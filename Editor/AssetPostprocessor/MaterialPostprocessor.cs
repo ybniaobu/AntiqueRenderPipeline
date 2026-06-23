@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace YPipeline.Editor
 {
-    public class MaterialPostprocessor : AssetPostprocessor
+    internal sealed class MaterialPostprocessor : AssetPostprocessor
     {
         private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets,
             string[] movedAssets, string[] movedFromAssetPaths)

@@ -5,13 +5,11 @@ using UnityEngine;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(NearFieldGlobalIllumination))]
-    public class NearFieldGlobalIlluminationEditor : VolumeComponentEditor
+    internal sealed class NearFieldGlobalIlluminationEditor : VolumeComponentEditor
     {
-        private SerializedDataParameter m_Mode;
+        // NFGI (HBIL)
         private SerializedDataParameter m_HalfResolution;
-        
-        // HBIL
-        private SerializedDataParameter m_HBILIntensity;
+        private SerializedDataParameter m_NearFieldIntensity;
         private SerializedDataParameter m_NearFieldRadius;
         private SerializedDataParameter m_MaxScreenPercentage;
         private SerializedDataParameter m_ConvergeDegree;
@@ -20,7 +18,7 @@ namespace YPipeline.Editor
         
         // Fallback
         private SerializedDataParameter m_FallbackMode;
-        private SerializedDataParameter m_FallbackIntensity;
+        private SerializedDataParameter m_FarFieldIntensity;
         private SerializedDataParameter m_FarFieldAO;
         
         // Denoise
@@ -41,11 +39,9 @@ namespace YPipeline.Editor
         {
             var o = new PropertyFetcher<NearFieldGlobalIllumination>(serializedObject);
             
-            m_Mode = Unpack(o.Find(x => x.mode));
+            // NFGI (HBIL)
             m_HalfResolution = Unpack(o.Find(x => x.halfResolution));
-            
-            // HBIL
-            m_HBILIntensity = Unpack(o.Find(x => x.hbilIntensity));
+            m_NearFieldIntensity = Unpack(o.Find(x => x.nearFieldIntensity));
             m_NearFieldRadius = Unpack(o.Find(x => x.nearFieldRadius));
             m_MaxScreenPercentage = Unpack(o.Find(x => x.maxScreenPercentage));
             m_ConvergeDegree = Unpack(o.Find(x => x.convergeDegree));
@@ -54,7 +50,7 @@ namespace YPipeline.Editor
             
             // Fallback
             m_FallbackMode = Unpack(o.Find(x => x.fallbackMode));
-            m_FallbackIntensity = Unpack(o.Find(x => x.fallbackIntensity));
+            m_FarFieldIntensity = Unpack(o.Find(x => x.farFieldIntensity));
             m_FarFieldAO = Unpack(o.Find(x => x.farFieldAO));
             
             // Denoise
@@ -72,33 +68,19 @@ namespace YPipeline.Editor
             // EditorGUILayout.Space();
             // EditorGUILayout.LabelField("Indirect Diffuse Lighting", EditorStyles.boldLabel);
             
-            PropertyField(m_Mode);
-
-            switch (m_Mode.value.enumValueIndex)
-            {
-                case (int) NFGIMode.None:
-                    break;
-                case (int) NFGIMode.SSDO:
-                    EditorGUILayout.HelpBox("暂未实现 SSDO", MessageType.Warning);
-                    break;
-                case (int) NFGIMode.HBIL:
-                    PropertyField(m_HalfResolution);
-                    PropertyField(m_HBILIntensity, EditorGUIUtility.TrTextContent("Near Field Intensity"));
-                    PropertyField(m_NearFieldRadius);
-                    PropertyField(m_MaxScreenPercentage);
-                    PropertyField(m_ConvergeDegree);
-                    PropertyField(m_DirectionCount);
-                    PropertyField(m_StepCount);
-                    break;
-            }
-            
-            if (m_Mode.value.enumValueIndex == (int) NFGIMode.None) return;
+            PropertyField(m_HalfResolution);
+            PropertyField(m_NearFieldIntensity);
+            PropertyField(m_NearFieldRadius);
+            PropertyField(m_MaxScreenPercentage);
+            PropertyField(m_ConvergeDegree);
+            PropertyField(m_DirectionCount);
+            PropertyField(m_StepCount);
             
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Fallback Settings", EditorStyles.boldLabel);
             
             PropertyField(m_FallbackMode);
-            PropertyField(m_FallbackIntensity);
+            PropertyField(m_FarFieldIntensity);
             PropertyField(m_FarFieldAO);
             
             EditorGUILayout.Space();

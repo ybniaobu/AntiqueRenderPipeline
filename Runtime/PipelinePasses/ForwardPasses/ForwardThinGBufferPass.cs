@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class ForwardThinGBufferPass : PipelinePass
+    internal sealed class ForwardThinGBufferPass : PipelinePass
     {
         private class ThinGBufferPassData
         {
@@ -47,7 +47,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((ThinGBufferPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (ThinGBufferPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.opaqueRendererList);
                     context.cmd.DrawRendererList(data.alphaTestRendererList);

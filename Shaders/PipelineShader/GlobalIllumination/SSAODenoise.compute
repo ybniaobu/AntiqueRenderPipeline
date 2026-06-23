@@ -17,27 +17,33 @@
 RWTexture2D<float2> _OutputTexture;
 Texture2D<float2> _InputTexture;
 Texture2D<float2> _AmbientOcclusionHistory;
-
-#ifdef _HALF_RESOLUTION
 Texture2D<float4> _HalfNormalRoughnessTexture;
-#define NORMAL_TEX _HalfNormalRoughnessTexture
 Texture2D<float2> _HalfMotionVectorTexture;
-#define MOTION_TEX _HalfMotionVectorTexture
-#else
-#ifdef _DEFERRED_RENDERING
-TEXTURE2D(_GBuffer1);
-#define NORMAL_TEX _GBuffer1
-#else
-TEXTURE2D(_ThinGBuffer);
-#define NORMAL_TEX _ThinGBuffer
-#endif
-TEXTURE2D(_MotionVectorTexture);
-#define MOTION_TEX _MotionVectorTexture
-#endif
 
-TEXTURE2D(_CameraDepthTexture);
+Texture2D<float4> _GBuffer1;
+Texture2D<float4> _ThinGBuffer;
+Texture2D<float2> _MotionVectorTexture;
+Texture2D<float> _CameraDepthTexture;
 SAMPLER(sampler_LinearClamp);
 SAMPLER(sampler_PointClamp);
+
+#ifdef _HALF_RESOLUTION
+    #define NORMAL_TEX _HalfNormalRoughnessTexture
+    #define MOTION_TEX _HalfMotionVectorTexture
+#else
+    #ifdef _DEFERRED_RENDERING
+        #define NORMAL_TEX _GBuffer1
+    #else
+        #define NORMAL_TEX _ThinGBuffer
+    #endif
+    #define MOTION_TEX _MotionVectorTexture
+#endif
+
+#ifdef _DEFERRED_RENDERING
+    #define FULL_NORMAL_TEX _GBuffer1
+#else
+    #define FULL_NORMAL_TEX _ThinGBuffer
+#endif
 
 // --- Spatial Denoise Groupshared Memory ---
 #define MAX_FILTER_RADIUS 16
@@ -73,6 +79,8 @@ inline float GetCriticalValue()             { return _SSAODenoiseParams2.z; }
 // Upsample Kernel
 // ----------------------------------------------------------------------------------------------------
 
+#define NORMAL_AWARE_UPSAMPLE 1
+
 [numthreads(8, 8, 1)]
 void UpsampleKernel(uint3 id : SV_DispatchThreadID)
 {
@@ -83,18 +91,36 @@ void UpsampleKernel(uint3 id : SV_DispatchThreadID)
     
     float fullDepth = LOAD_TEXTURE2D_LOD(_CameraDepthTexture, pixelCoord, 0).r;
     fullDepth = GetViewDepthFromDepthTexture(fullDepth);
-    
     float4 halfDepths = GATHER_GREEN_TEXTURE2D(_InputTexture, sampler_PointClamp, screenUV);
     float4 aos = GATHER_RED_TEXTURE2D(_InputTexture, sampler_PointClamp, screenUV);
+    
+    #if NORMAL_AWARE_UPSAMPLE
+    float3 fullNormal = LOAD_TEXTURE2D_LOD(FULL_NORMAL_TEX, pixelCoord, 0).rgb;
+    fullNormal = DecodeNormalFrom888(fullNormal);
+    float4 normalRs = GATHER_RED_TEXTURE2D(_HalfNormalRoughnessTexture, sampler_PointClamp, screenUV);
+    float4 normalGs = GATHER_GREEN_TEXTURE2D(_HalfNormalRoughnessTexture, sampler_PointClamp, screenUV);
+    float4 normalBs = GATHER_BLUE_TEXTURE2D(_HalfNormalRoughnessTexture, sampler_PointClamp, screenUV);
+    float3 normal01 = DecodeNormalFrom888(float3(normalRs.x, normalGs.x, normalBs.x));
+    float3 normal11  = DecodeNormalFrom888(float3(normalRs.y, normalGs.y, normalBs.y));
+    float3 normal10  = DecodeNormalFrom888(float3(normalRs.z, normalGs.z, normalBs.z));
+    float3 normal00 = DecodeNormalFrom888(float3(normalRs.w, normalGs.w, normalBs.w));
+    #endif
 
     // ------------------------- Depth-Aware Upsample -------------------------
     
     int xEven = 1 - pixelCoord.x & 1;
     int yEven = 1 - pixelCoord.y & 1;
     int orderIndex = yEven * 2 + xEven;
+    
+    #if NORMAL_AWARE_UPSAMPLE
+    float ao = DepthNormalAwareBilateralUpsample(GetDepthThreshold(), fullDepth, halfDepths, 
+        fullNormal, normal01, normal11, normal10, normal00, aos, orderIndex);
+    #else
     float ao = DepthAwareBilateralUpsample(GetDepthThreshold(), fullDepth, halfDepths, aos, orderIndex);
     // float ao = NearestDepthUpsample(fullDepth, halfDepths, aos);
     // float ao = DepthAwareBilateralUpsample_Uniform(GetDepthThreshold(), fullDepth, halfDepths, aos);
+    #endif
+    
     _OutputTexture[id.xy] = float2(ao, fullDepth);
 }
 
@@ -299,8 +325,7 @@ void TemporalDenoiseKernel(uint3 id : SV_DispatchThreadID, uint3 groupThreadId :
     
     float middleDepth = neighbours[0].g;
     float historyDepth = history.g;
-    bool depthTest = abs(1 - middleDepth / historyDepth) < GetRelativeDepthThreshold();
-    depthTest = depthTest || abs(middleDepth - historyDepth) < GetAbsoluteDepthThreshold();
+    bool depthTest = DepthWeight(middleDepth, historyDepth, GetDepthThreshold());
     blendFactor = lerp(0, blendFactor, depthTest); // Depth Test
     blendFactor = lerp(blendFactor, 0, any(abs(historyUV - 0.5) > 0.5)); // Off-Screen Test
     

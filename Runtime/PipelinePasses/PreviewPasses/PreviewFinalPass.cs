@@ -8,7 +8,7 @@ using UnityEditor;
 
 namespace YPipeline
 {
-    public class PreviewFinalPass : PipelinePass
+    internal sealed class PreviewFinalPass : PipelinePass
     {
         private class FinalPassData
         {
@@ -35,7 +35,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
                 
-                builder.SetRenderFunc((FinalPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (FinalPassData data, UnsafeGraphContext context) =>
                 {
                     if (Handles.ShouldRenderGizmos()) context.cmd.DrawRendererList(data.preGizmosRendererList);
                     if (Handles.ShouldRenderGizmos()) context.cmd.DrawRendererList(data.postGizmosRendererList);

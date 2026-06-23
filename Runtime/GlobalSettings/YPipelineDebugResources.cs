@@ -6,7 +6,7 @@ namespace YPipeline
 {
     [Serializable]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class YPipelineDebugResources : IRenderPipelineResources
+    public sealed class YPipelineDebugResources : IRenderPipelineResources
     {
         [SerializeField][HideInInspector] private int m_Version = 1;
         public int version => m_Version;

@@ -6,7 +6,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public abstract class CameraRenderer
+    internal abstract class CameraRenderer : IDisposable
     {
         protected List<PipelinePass> m_CameraPipelineNodes = new List<PipelinePass>();
         
@@ -18,17 +18,19 @@ namespace YPipeline
         }
 
         protected abstract void Initialize(ref YPipelineData data);
+        
+        public abstract void Render(ref YPipelineData data);
 
-        public virtual void Dispose()
+        public void Dispose()
         {
             PipelinePass.Dispose(m_CameraPipelineNodes);
             m_CameraPipelineNodes.Clear();
             m_CameraPipelineNodes = null;
         }
 
-        public virtual void Render(ref YPipelineData data)
+        protected void RecordAndExecuteRenderGraph(ref YPipelineData data)
         {
-            RenderGraphParameters renderGraphParams = new RenderGraphParameters()
+            RenderGraphParameters renderGraphParams = new RenderGraphParameters
             {
                 executionId = data.camera.GetEntityId(),
                 generateDebugData = true,
@@ -36,7 +38,6 @@ namespace YPipeline
                 commandBuffer = data.cmd,
                 currentFrameIndex = Time.frameCount,
                 renderTextureUVOriginStrategy = RenderTextureUVOriginStrategy.BottomLeft,
-                rendererListCulling = true
             };
             
             try

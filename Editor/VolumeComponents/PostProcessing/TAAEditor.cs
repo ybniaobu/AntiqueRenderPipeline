@@ -4,7 +4,7 @@ using UnityEditor.Rendering;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(TAA))]
-    public class TAAEditor : VolumeComponentEditor
+    internal sealed class TAAEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_JitterScale;
         private SerializedDataParameter m_HistoryBlendFactor;

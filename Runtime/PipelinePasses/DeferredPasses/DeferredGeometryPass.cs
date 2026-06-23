@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class DeferredGeometryPass : PipelinePass
+    internal sealed class DeferredGeometryPass : PipelinePass
     {
         private class DeferredGeometryPassData
         {
@@ -43,7 +43,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
                 
-                builder.SetRenderFunc((DeferredGeometryPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (DeferredGeometryPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.rendererList);
                 });

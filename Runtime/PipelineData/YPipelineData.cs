@@ -4,7 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class YPipelineData
+    internal sealed class YPipelineData
     {
         // ----------------------------------------------------------------------------------------------------
         // References
@@ -19,10 +19,10 @@ namespace YPipeline
         public CommandBuffer cmd;
         public CullingResults cullingResults;
         
-        public YPipelineLightsData lightsData;
-        public YPipelineReflectionProbesData reflectionProbesData;
+        public YPipelineLightData lightData;
+        public YPipelineReflectionProbeData reflectionProbeData;
         
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_ASSERTIONS
         public DebugSettings debugSettings;
 #endif
         
@@ -32,24 +32,27 @@ namespace YPipeline
 
         public Vector2Int BufferSize => new Vector2Int((int) (camera.pixelWidth * asset.renderScale), (int) (camera.pixelHeight * asset.renderScale));
         public bool IsDeferredRenderingEnabled => asset.renderPath == RenderPath.DeferredPlus;
+        public bool IsPCSSEnabled => asset.shadowMode == ShadowMode.PCSS;
         public bool IsTAAEnabled => asset.antiAliasingMode == AntiAliasingMode.TAA;
+        public bool IsScreenSpaceIrradianceEnabled => asset.enableProbeVolumeScreenSpaceIrradiance && isAPVLoaded;
         public bool IsSSAOEnabled => asset.enableScreenSpaceAmbientOcclusion;
         public bool IsSSGIEnabled => asset.ssgiMode != SSGIMode.None;
         public bool IsSSREnabled => asset.enableScreenSpaceReflection;
         
         // Store locally the value on the instance due as the Render Pipeline Asset data might change before the disposal of the asset, making some APV Resources leak.
         public bool isAPVEnabled;
+        public bool isAPVLoaded;
         
         // ----------------------------------------------------------------------------------------------------
         // Buffer and Texture Handles
         // ----------------------------------------------------------------------------------------------------
         
-        public TextureHandle SunLightShadowMap { set; get; }
-        public bool isSunLightShadowMapCreated;
-        public TextureHandle SpotLightShadowMap { set; get; }
-        public bool isSpotLightShadowMapCreated;
-        public TextureHandle PointLightShadowMap { set; get; }
-        public bool isPointLightShadowMapCreated;
+        public TextureHandle ReflectionProbeAtlas { set; get; }
+        public bool isReflectionProbeAtlasCreated;
+        public TextureHandle SunLightShadowAtlas { set; get; }
+        public bool isSunLightShadowAtlasCreated;
+        public TextureHandle PunctualLightShadowAtlas { set; get; }
+        public bool isPunctualLightShadowAtlasCreated;
         
         public TextureHandle CameraColorTarget { set; get; }
         public TextureHandle CameraDepthTarget { set; get; }
@@ -80,17 +83,12 @@ namespace YPipeline
         public TextureHandle TAAHistory { set; get; }
         public TextureHandle SceneHistory { set; get; }
         
-        public TextureHandle EnvBRDFLut { set; get; }
-        public TextureHandle BlueNoise256 { set; get; }
-        
         // ----------------------------------------------------------------------------------------------------
         // Structured Buffers
         // ----------------------------------------------------------------------------------------------------
-        public BufferHandle PunctualLightBufferHandle { set; get; }
-        public BufferHandle PointLightShadowBufferHandle { set; get; }
-        public BufferHandle PointLightShadowMatricesBufferHandle { set; get; }
-        public BufferHandle SpotLightShadowBufferHandle { set; get; }
-        public BufferHandle SpotLightShadowMatricesBufferHandle { set; get; }
+        
+        public BufferHandle PunctualLightStructuredBufferHandle { set; get; }
+        public BufferHandle PunctualLightSliceStructuredBufferHandle { set; get; }
         
         public BufferHandle TileLightIndicesBufferHandle { set; get; }
         public BufferHandle TileReflectionProbeIndicesBufferHandle { set; get; }
@@ -106,19 +104,18 @@ namespace YPipeline
             renderGraph?.Cleanup();
             renderGraph = null;
             camera = null;
-            lightsData.Dispose();
-            lightsData = null;
-            reflectionProbesData.Dispose();
-            reflectionProbesData = null;
+            lightData?.Dispose();
+            lightData = null;
+            reflectionProbeData?.Dispose();
+            reflectionProbeData = null;
             
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            debugSettings.Dispose();
+#if UNITY_ASSERTIONS
+            debugSettings?.Dispose();
             debugSettings = null;
 #endif
 
-            SunLightShadowMap = TextureHandle.nullHandle;
-            SpotLightShadowMap = TextureHandle.nullHandle;
-            PointLightShadowMap =  TextureHandle.nullHandle;
+            SunLightShadowAtlas = TextureHandle.nullHandle;
+            PunctualLightShadowAtlas = TextureHandle.nullHandle;
             
             CameraColorTarget = TextureHandle.nullHandle;
             CameraDepthTarget = TextureHandle.nullHandle;
@@ -126,8 +123,17 @@ namespace YPipeline
             CameraDepthAttachment = TextureHandle.nullHandle;
             CameraColorTexture = TextureHandle.nullHandle;
             CameraDepthTexture = TextureHandle.nullHandle;
+            GBuffer0 = TextureHandle.nullHandle;
+            GBuffer1 = TextureHandle.nullHandle;
+            GBuffer2 = TextureHandle.nullHandle;
+            GBuffer3 = TextureHandle.nullHandle;
             ThinGBuffer  = TextureHandle.nullHandle;
             MotionVectorTexture = TextureHandle.nullHandle;
+            HalfDepthTexture = TextureHandle.nullHandle;
+            HalfNormalRoughnessTexture = TextureHandle.nullHandle;
+            HalfMotionVectorTexture = TextureHandle.nullHandle;
+            HalfReprojectedSceneHistory = TextureHandle.nullHandle;
+            IrradianceTexture = TextureHandle.nullHandle;
             AmbientOcclusionTexture = TextureHandle.nullHandle;
             TAATarget  = TextureHandle.nullHandle;
             BloomTexture = TextureHandle.nullHandle;
@@ -135,16 +141,13 @@ namespace YPipeline
             CameraFinalTexture = TextureHandle.nullHandle;
                 
             TAAHistory = TextureHandle.nullHandle;
-            EnvBRDFLut = TextureHandle.nullHandle;
-            BlueNoise256 = TextureHandle.nullHandle;
+            SceneHistory = TextureHandle.nullHandle;
             
-            PunctualLightBufferHandle = BufferHandle.nullHandle;
-            PointLightShadowBufferHandle = BufferHandle.nullHandle;
-            PointLightShadowMatricesBufferHandle = BufferHandle.nullHandle;
-            SpotLightShadowBufferHandle = BufferHandle.nullHandle;
-            SpotLightShadowMatricesBufferHandle = BufferHandle.nullHandle;
+            PunctualLightStructuredBufferHandle = BufferHandle.nullHandle;
+            PunctualLightSliceStructuredBufferHandle = BufferHandle.nullHandle;
             
             TileLightIndicesBufferHandle = BufferHandle.nullHandle;
+            TileReflectionProbeIndicesBufferHandle = BufferHandle.nullHandle;
         }
     }
 }

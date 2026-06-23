@@ -6,7 +6,7 @@ using YPipeline;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(LiftGammaGain))]
-    public class LiftGammaGainEditor : VolumeComponentEditor
+    internal sealed class LiftGammaGainEditor : VolumeComponentEditor
     {
         static class Styles
         {

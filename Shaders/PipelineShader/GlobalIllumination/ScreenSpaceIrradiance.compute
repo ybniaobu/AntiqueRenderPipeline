@@ -1,0 +1,91 @@
+#pragma kernel APV
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
+
+#pragma multi_compile _ _HALF_RESOLUTION
+#pragma multi_compile _ _DEFERRED_RENDERING
+#pragma multi_compile _ PROBE_VOLUMES_L1 PROBE_VOLUMES_L2
+
+#include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
+#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+#include "SSGIFallback.hlsl"
+
+// --- Textures & Samplers ---
+RWTexture2D<float4> _OutputTexture;
+
+#ifdef _HALF_RESOLUTION
+    Texture2D<float> _HalfDepthTexture;
+    #define DEPTH_TEX _HalfDepthTexture
+    Texture2D<float4> _HalfNormalRoughnessTexture;
+    #define NORMAL_TEX _HalfNormalRoughnessTexture
+#else
+    TEXTURE2D(_CameraDepthTexture);
+    #define DEPTH_TEX _CameraDepthTexture
+    #ifdef _DEFERRED_RENDERING
+        TEXTURE2D(_GBuffer1);
+        #define NORMAL_TEX _GBuffer1
+    #else
+        TEXTURE2D(_ThinGBuffer);
+        #define NORMAL_TEX _ThinGBuffer
+    #endif
+#endif
+
+#define NOISE_TEX_3D _BlueNoise3D
+TEXTURE3D(NOISE_TEX_3D);
+SAMPLER(sampler_LinearClamp);
+SAMPLER(sampler_PointClamp);
+
+// --- Global Variables ---
+float4 _CameraBufferSize; // x: 1.0 / bufferSize.x, y: 1.0 / bufferSize.y, z: bufferSize.x, w: bufferSize.y
+float4 _TimeParams; // x: frameCount, y: 1.0 / frameCount
+
+// --- Local Variables ---
+float4 _TextureSize; // x: 1.0 / width, y: 1.0 / height, z: width, w: height
+int _IsTemporalDenoiseEnabled;
+
+// ----------------------------------------------------------------------------------------------------
+// Utility Functions
+// ----------------------------------------------------------------------------------------------------
+
+inline float LoadDepth(int2 pixelCoord)
+{
+    return LOAD_TEXTURE2D_LOD(DEPTH_TEX, pixelCoord, 0).r;
+}
+
+inline float3 LoadAndDecodeNormal(int2 pixelCoord)
+{
+    float3 packedNormalWS = LOAD_TEXTURE2D_LOD(NORMAL_TEX, pixelCoord, 0).rgb;
+    return DecodeNormalFrom888(packedNormalWS);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// APV
+// ----------------------------------------------------------------------------------------------------
+
+[numthreads(8, 8, 1)]
+void APV(uint3 id : SV_DispatchThreadID)
+{
+    // ------------------------- Fetch Position & Normal -------------------------
+    
+    int2 pixelCoord = clamp(id.xy, 0, _TextureSize.zw - 1);
+    float2 screenUV = (float2(pixelCoord) + float2(0.5, 0.5)) * _TextureSize.xy;
+    float rawDepth = LoadDepth(pixelCoord);
+    float linearDepth = GetViewDepthFromDepthTexture(rawDepth);
+    
+    float4 positionNDC = GetNDCFromUVAndDepth(screenUV, rawDepth);
+    float3 positionWS = TransformNDCToWorld(positionNDC, UNITY_MATRIX_I_VP);
+    float3 viewDirWS = GetWorldSpaceNormalizedViewDir(positionWS);
+    float3 normalWS = LoadAndDecodeNormal(pixelCoord);
+    
+    // ------------------------- Noise -------------------------
+    
+    uint3 dimensions;
+    NOISE_TEX_3D.GetDimensions(dimensions.x, dimensions.y, dimensions.z);
+    int3 noiseCoord = int3(pixelCoord % dimensions.xy, _IsTemporalDenoiseEnabled ? _TimeParams.x % dimensions.z : _APVFrameIndex % dimensions.z);
+    float3 noise = LOAD_TEXTURE3D_LOD(_BlueNoise3D, noiseCoord, 0).rgb;
+    
+    // ------------------------- Sample APV -------------------------
+    
+    float3 irradiance = SampleProbeVolume(positionWS, normalWS, viewDirWS, noise);
+    _OutputTexture[id.xy] = float4(max(irradiance, 0), linearDepth);
+}

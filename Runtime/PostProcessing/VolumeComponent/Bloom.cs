@@ -30,7 +30,7 @@ namespace YPipeline
     
     [System.Serializable, VolumeComponentMenu("Post Processing/Bloom")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class Bloom : VolumeComponent, IPostProcessComponent
+    public sealed class Bloom : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("泛光模式 Choose classical additive or energy-conserving scattering bloom.")]
         public BloomModeParameter mode = new BloomModeParameter(BloomMode.Scattering, true);
@@ -48,7 +48,7 @@ namespace YPipeline
         public ClampedFloatParameter scatter = new ClampedFloatParameter(0.5f, 0.0f, 1.0f);
         
         [Tooltip("决定了像素开始泛光的亮度阈值 Filters out pixels under this level of brightness. Value is in gamma-space.")]
-        public MinFloatParameter threshold = new MinFloatParameter(4.0f, 0.0f);
+        public MinFloatParameter threshold = new MinFloatParameter(8.0f, 0.0f);
         
         [Tooltip("缓和亮度阈值参数的效果 Smooths cutoff effect of the configured threshold. Higher value makes more transition.")]
         public ClampedFloatParameter thresholdKnee = new ClampedFloatParameter(0.5f, 0.0f, 1.0f);

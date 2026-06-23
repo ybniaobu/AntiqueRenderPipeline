@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace YPipeline
 {
-    public abstract class PostProcessingSubPass
+    internal abstract class PostProcessingSubPass
     {
         public bool isActivated = true;
         

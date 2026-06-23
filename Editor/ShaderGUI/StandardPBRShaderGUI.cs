@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace YPipeline.Editor
 {
-    public class StandardPBRShaderGUI : YPipelineBaseShaderGUI
+    internal class StandardPBRShaderGUI : YPipelineBaseShaderGUI
     {
         protected override bool ShowDefaultGUI => true;
 

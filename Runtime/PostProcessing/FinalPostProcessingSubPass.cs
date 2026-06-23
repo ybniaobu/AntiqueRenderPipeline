@@ -4,7 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class FinalPostProcessingSubPass : PostProcessingSubPass
+    internal sealed class FinalPostProcessingSubPass : PostProcessingSubPass
     {
         private class FinalPostPassData
         {
@@ -35,6 +35,9 @@ namespace YPipeline
             m_FinalPostProcessingMaterial.hideFlags = HideFlags.HideAndDontSave;
             
             m_Random = new System.Random();
+            
+            var stack = VolumeManager.instance.stack;
+            m_FilmGrain = stack.GetComponent<FilmGrain>();
         }
 
         public override void OnDispose()
@@ -51,9 +54,6 @@ namespace YPipeline
 
         public override void OnRecord(ref YPipelineData data)
         {
-            var stack = VolumeManager.instance.stack;
-            m_FilmGrain = stack.GetComponent<FilmGrain>();
-            
             using (var builder = data.renderGraph.AddRasterRenderPass<FinalPostPassData>("Final Post Processing", out var passData))
             {
                 passData.material = m_FinalPostProcessingMaterial;
@@ -103,7 +103,7 @@ namespace YPipeline
                     m_FilmGrainTexture?.Release();
                 }
                 
-                builder.SetRenderFunc((FinalPostPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (FinalPostPassData data, RasterGraphContext context) =>
                 {
                     CoreUtils.SetKeyword(data.material, YPipelineKeywords.k_FXAAQuality, data.isFXAAEnabled && data.isFXAAQualityEnabled);
                     CoreUtils.SetKeyword(data.material, YPipelineKeywords.k_FXAAConsole, data.isFXAAEnabled && !data.isFXAAQualityEnabled);

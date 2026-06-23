@@ -8,7 +8,7 @@ namespace YPipeline.Editor
     [CanEditMultipleObjects]
     [CustomEditor(typeof(ReflectionProbe))]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public partial class YPipelineReflectionProbeEditor : UnityEditor.Editor
+    internal sealed partial class YPipelineReflectionProbeEditor : UnityEditor.Editor
     {
         // ----------------------------------------------------------------------------------------------------
         // Fields/Properties

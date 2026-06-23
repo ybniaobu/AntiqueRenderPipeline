@@ -11,7 +11,7 @@ namespace YPipeline.Editor
 {
     using CED = CoreEditorDrawer<SerializedYPipelineReflectionProbe>;
     
-    public static partial class YPipelineReflectionProbeUI
+    internal static partial class YPipelineReflectionProbeUI
     {
         private enum Expandable
         {

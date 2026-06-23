@@ -4,7 +4,7 @@ using UnityEditor.Rendering;
 
 namespace YPipeline.Editor
 {
-    public class SerializedYPipelineReflectionProbe
+    internal sealed class SerializedYPipelineReflectionProbe
     {
         public SerializedObject serializedObject;
         public SerializedObject serializedAdditionalDataObject;

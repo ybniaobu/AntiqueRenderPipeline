@@ -7,11 +7,10 @@ using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.Rendering;
-using YPipeline;
 
 namespace YPipeline.Editor
 {
-    public static partial class YPipelineReflectionProbeUI
+    internal static partial class YPipelineReflectionProbeUI
     {
         /// <summary>
         /// 生成包含 7 个 mipmap 的 Octahedral Atlas：低质量的高度为 cubemapSize * 0.5，宽度为 cubemapSize * 0.75；

@@ -85,6 +85,9 @@ namespace YPipeline
         // Shadow Textures IDs
         // ----------------------------------------------------------------------------------------------------
         
+        public static readonly int k_SunLightShadowAtlasID = Shader.PropertyToID("_SunLightShadowAtlas");
+        public static readonly int k_PunctualLightShadowAtlasID = Shader.PropertyToID("_PunctualLightShadowAtlas");
+        
         public static readonly int k_SunLightShadowMapID = Shader.PropertyToID("_SunLightShadowMap");
         public static readonly int k_SpotLightShadowMapID = Shader.PropertyToID("_SpotLightShadowMap");
         public static readonly int k_PointLightShadowMapID = Shader.PropertyToID("_PointLightShadowMap");
@@ -106,9 +109,16 @@ namespace YPipeline
         public static readonly int k_BloomPrefilterTextureID = Shader.PropertyToID("_BloomPrefilterTexture");
         
         // ----------------------------------------------------------------------------------------------------
-        // Non Builtin Camera Matrix IDs
+        // Camera / Time Related Param IDs
         // ----------------------------------------------------------------------------------------------------
         
+        public static readonly int k_CameraSettingsID = Shader.PropertyToID("_CameraSettings");
+        
+        public static readonly int k_BufferSizeID = Shader.PropertyToID("_CameraBufferSize");
+        public static readonly int k_JitterID = Shader.PropertyToID("_Jitter");
+        public static readonly int k_TimeParams = Shader.PropertyToID("_TimeParams");
+        
+        // Non Builtin Camera Matrix IDs
         public static readonly int k_InverseProjectionMatrixID = Shader.PropertyToID("_MatrixIP");
         public static readonly int k_InverseViewProjectionMatrixID = Shader.PropertyToID("_MatrixIVP");
         public static readonly int k_NonJitteredViewProjectionMatrixID = Shader.PropertyToID("_MatrixNonJitteredVP");
@@ -119,24 +129,11 @@ namespace YPipeline
         public static readonly int k_NonJitteredPreviousInverseViewProjectionMatrixID = Shader.PropertyToID("_MatrixNonJitteredPreviousIVP");
         
         // ----------------------------------------------------------------------------------------------------
-        // Common Param IDs
-        // ----------------------------------------------------------------------------------------------------
-        
-        public static readonly int k_CameraSettingsID = Shader.PropertyToID("_CameraSettings");
-        
-        public static readonly int k_BufferSizeID = Shader.PropertyToID("_CameraBufferSize");
-        public static readonly int k_JitterID = Shader.PropertyToID("_Jitter");
-        public static readonly int k_TimeParams = Shader.PropertyToID("_TimeParams");
-        
-        // ----------------------------------------------------------------------------------------------------
         // Lights And Shadows Related Param IDs
         // ----------------------------------------------------------------------------------------------------
         
-        // Light Global Params Per Setting
-        public static readonly int k_CascadeSettingsID = Shader.PropertyToID("_CascadeSettings");
-        public static readonly int k_ShadowMapSizesID = Shader.PropertyToID("_ShadowMapSizes");
-        
         // Sun Light & Shadow Data
+        public static readonly int k_CascadeParams = Shader.PropertyToID("_CascadeParams");
         public static readonly int k_SunLightColorID = Shader.PropertyToID("_SunLightColor");
         public static readonly int k_SunLightDirectionID = Shader.PropertyToID("_SunLightDirection");
         public static readonly int k_SunLightShadowColorID = Shader.PropertyToID("_SunLightShadowColor");
@@ -144,15 +141,15 @@ namespace YPipeline
         public static readonly int k_SunLightShadowBiasID = Shader.PropertyToID("_SunLightShadowBias");
         public static readonly int k_SunLightShadowParamsID = Shader.PropertyToID("_SunLightShadowParams");
         public static readonly int k_SunLightShadowParams2ID = Shader.PropertyToID("_SunLightShadowParams2");
-        
         public static readonly int k_CascadeCullingSpheresID = Shader.PropertyToID("_CascadeCullingSpheres");
         public static readonly int k_SunLightShadowMatricesID = Shader.PropertyToID("_SunLightShadowMatrices");
         public static readonly int k_SunLightDepthParamsID = Shader.PropertyToID("_SunLightDepthParams");
         
         // Punctual Light & Shadow Data
         public static readonly int k_PunctualLightCountID = Shader.PropertyToID("_PunctualLightCount");
+        public static readonly int k_PunctualLightsDataID = Shader.PropertyToID("_PunctualLightsData");
+        public static readonly int k_PunctualLightSlicesDataID = Shader.PropertyToID("_PunctualLightSlicesData");
         
-        public static readonly int k_PunctualLightDataID = Shader.PropertyToID("_PunctualLightData");
         public static readonly int k_PointLightShadowDataID = Shader.PropertyToID("_PointLightShadowData");
         public static readonly int k_PointLightShadowMatricesID = Shader.PropertyToID("_PointLightShadowMatrices");
         public static readonly int k_SpotLightShadowDataID = Shader.PropertyToID("_SpotLightShadowData");
@@ -176,6 +173,7 @@ namespace YPipeline
         public static readonly int k_ReflectionProbeSHID = Shader.PropertyToID("_ReflectionProbeSH");
         public static readonly int k_ReflectionProbeSampleParamsID = Shader.PropertyToID("_ReflectionProbeSampleParams");
         public static readonly int k_ReflectionProbeParamsID = Shader.PropertyToID("_ReflectionProbeParams");
+        public static readonly int k_ReflectionProbeMatricesID = Shader.PropertyToID("_ReflectionProbeMatrices");
         
         // ----------------------------------------------------------------------------------------------------
         // Global Illumination Related Param IDs
@@ -307,6 +305,9 @@ namespace YPipeline
         
         // SSGI
         public const string k_ScreenSpaceIrradiance = "_SCREEN_SPACE_IRRADIANCE";
+        
+        // Common
+        public const string k_HalfResolution = "_HALF_RESOLUTION";
         
         // ----------------------------------------------------------------------------------------------------
         // Light Culling Related Keywords

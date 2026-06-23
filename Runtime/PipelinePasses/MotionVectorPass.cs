@@ -6,7 +6,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class MotionVectorPass : PipelinePass
+    internal sealed class MotionVectorPass : PipelinePass
     {
         private class MotionVectorPassData
         {
@@ -32,12 +32,12 @@ namespace YPipeline
 
         protected override void OnRecord(ref YPipelineData data)
         {
+            // These flags are still required in SRP or the engine won't compute previous model matrices...
+            // If the flag hasn't been set yet on this camera, motion vectors will skip a frame.
+            data.camera.depthTextureMode |= DepthTextureMode.MotionVectors | DepthTextureMode.Depth;
+            
             using (var builder = data.renderGraph.AddRasterRenderPass<MotionVectorPassData>("Camera & Object Motion Vector", out var passData))
             {
-                // These flags are still required in SRP or the engine won't compute previous model matrices...
-                // If the flag hasn't been set yet on this camera, motion vectors will skip a frame.
-                data.camera.depthTextureMode |= DepthTextureMode.MotionVectors | DepthTextureMode.Depth;
-                
                 // Motion Vector Texture
                 Vector2Int bufferSize = data.BufferSize;
                 TextureDesc motionVectorDesc = new TextureDesc(bufferSize.x, bufferSize.y)
@@ -83,11 +83,8 @@ namespace YPipeline
                 builder.SetGlobalTextureAfterPass(data.MotionVectorTexture, YPipelineShaderIDs.k_MotionVectorTextureID);
                 builder.AllowPassCulling(false);
                 
-                builder.SetRenderFunc((MotionVectorPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (MotionVectorPassData data, RasterGraphContext context) =>
                 {
-                    // context.cmd.SetRenderTarget(data.motionVectorTexture, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
-                    //     data.depthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
-                    
                     // Object Motion Vector
                     context.cmd.BeginSample("Object Motion Vector");
                     context.cmd.DrawRendererList(data.opaqueRendererList);

@@ -4,7 +4,7 @@ using UnityEditor.Rendering;
 
 namespace YPipeline.Editor
 {
-    public class SerializedYPipelineCamera : ISerializedCamera
+    internal sealed class SerializedYPipelineCamera : ISerializedCamera
     {
         public CameraEditor.Settings baseCameraSettings { get; }
         public SerializedObject serializedObject { get; }

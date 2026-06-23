@@ -6,9 +6,37 @@ namespace YPipeline
     public static class ShadowUtils
     {
         /// <summary>
-        /// 获取从世界空间坐标到光源屏幕空间坐标的矩阵，适用于使用 Shadow Array 的灯光，点光源和聚光灯别忘了在 Shader 中做齐次除法
+        /// Retrieve the size of the sun light cascaded shadow map.
+        /// Assuming the cascaded shadow map is set to a resolution of 4096, each slice will have a resolution of 2048×2048.
+        /// For cascade count of 4, 3, 2, and 1, the returned cascaded shadow map sizes are 4096×4096, 4096×4096, 4096×2048, and 2048×2048, respectively.
         /// </summary>
-        /// <param name="vp">光源的观察投影矩阵</param>
+        /// <param name="cascadeAtlasSize">the configured sun light cascaded shadow map size</param>
+        /// <param name="cascadeCount">the configured CSM cascade count</param>
+        /// <returns></returns>
+        public static Vector2Int GetCascadeAtlasSize(int cascadeAtlasSize, int cascadeCount)
+        {
+            int width = cascadeCount == 1 ? cascadeAtlasSize >> 1 : cascadeAtlasSize;
+            int height = cascadeCount <= 2 ? cascadeAtlasSize >> 1 : cascadeAtlasSize;
+            return new Vector2Int(width, height);
+        }
+
+        /// <summary>
+        /// Extracts width and height from the packed punctual light atlas size.
+        /// </summary>
+        /// <param name="packedNum">32-bit value with width in high 16 bits, height in low 16 bits.</param>
+        /// <returns></returns>
+        public static Vector2Int GetPunctualLightAtlasSize(uint packedNum)
+        {
+            int width = (int) (packedNum >> 16);
+            int height = (int) (packedNum & 0xFFFF);
+            return new Vector2Int(width, height);
+        }
+        
+        /// <summary>
+        /// Get the matrix that transforms coordinates from world space to the light's screen space coordinates.
+        /// For point lights and spot lights, remember to perform homogeneous division in the shader.
+        /// </summary>
+        /// <param name="vp">the light’s view-projection matrix</param>
         /// <returns></returns>
         public static Matrix4x4 GetWorldToLightScreenMatrix(Matrix4x4 vp)
         {
@@ -37,41 +65,34 @@ namespace YPipeline
         }
         
         /// <summary>
-        /// 获取从世界空间坐标到光源屏幕空间切片坐标的矩阵，适用于使用 Shadow Atlas 的灯光，点光源和聚光灯别忘了在 Shader 中做齐次除法
+        /// Get the matrix that transforms coordinates from world space to the light's screen-space slice coordinates.
+        /// For point lights and spot lights, remember to perform homogeneous division in the shader.
         /// </summary>
-        /// <param name="vp">光源的观察投影矩阵</param>
-        /// <param name="offset">切片偏移</param>
-        /// <param name="scale">切片比例</param>
+        /// <param name="vp">the light’s view-projection matrix</param>
+        /// <param name="offset">slice offset</param>
+        /// <param name="scale">slice scale</param>
         /// <returns></returns>
-        public static Matrix4x4 GetWorldToTiledLightScreenMatrix(Matrix4x4 vp, Vector2 offset, float scale = 1.0f)
+        public static Matrix4x4 GetWorldToSlicedLightScreenMatrix(Matrix4x4 vp, Vector2 offset, Vector2 scale)
         {
             Matrix4x4 vps = GetWorldToLightScreenMatrix(vp);
             
-            vps.m00 = scale * vps.m00 + offset.x * vps.m30;
-            vps.m01 = scale * vps.m01 + offset.x * vps.m31;
-            vps.m02 = scale * vps.m02 + offset.x * vps.m32;
-            vps.m03 = scale * vps.m03 + offset.x * vps.m33;
-            vps.m10 = scale * vps.m10 + offset.y * vps.m30;
-            vps.m11 = scale * vps.m11 + offset.y * vps.m31;
-            vps.m12 = scale * vps.m12 + offset.y * vps.m32;
-            vps.m13 = scale * vps.m13 + offset.y * vps.m33;
+            vps.m00 = scale.x * vps.m00 + offset.x * vps.m30;
+            vps.m01 = scale.x * vps.m01 + offset.x * vps.m31;
+            vps.m02 = scale.x * vps.m02 + offset.x * vps.m32;
+            vps.m03 = scale.x * vps.m03 + offset.x * vps.m33;
+            vps.m10 = scale.y * vps.m10 + offset.y * vps.m30;
+            vps.m11 = scale.y * vps.m11 + offset.y * vps.m31;
+            vps.m12 = scale.y * vps.m12 + offset.y * vps.m32;
+            vps.m13 = scale.y * vps.m13 + offset.y * vps.m33;
             
             return vps;
         }
 
-        // public static Matrix4x4 GetShadowJitteredProjectionMatrix(float shadowMapSize, Matrix4x4 projectionMatrix, Vector2 jitter, bool isOrthographic)
+        // https://i.ibb.co/wpW5Mnf/Calc-Guard-Angle.png
+        // public static float CalculateGuardAngle(float guardBandTexel, float resolution)
         // {
-        //     if (isOrthographic)
-        //     {
-        //         projectionMatrix[0, 3] += jitter.x / shadowMapSize;
-        //         projectionMatrix[1, 3] += jitter.y / shadowMapSize;
-        //     }
-        //     else
-        //     {
-        //         projectionMatrix[0, 2] += jitter.x / shadowMapSize;
-        //         projectionMatrix[1, 2] += jitter.y / shadowMapSize;
-        //     }
-        //     return projectionMatrix;
+        //     float realHalfFOV = Mathf.Atan(1.0f + 2.0f * guardBandTexel / resolution);
+        //     return realHalfFOV * Mathf.Rad2Deg - 45.0f;
         // }
     }
 }

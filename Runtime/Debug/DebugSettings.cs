@@ -1,11 +1,11 @@
-﻿using System.Diagnostics;
+﻿#if UNITY_ASSERTIONS
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace YPipeline
 {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    public class DebugSettings
+    public sealed class DebugSettings
     {
         private YPipelineDebugResources m_DebugResources;
         public LightingDebugSettings lightingDebugSettings;
@@ -23,5 +23,5 @@ namespace YPipeline
             lightingDebugSettings.OnDispose();
         }
     }
-#endif
 }
+#endif

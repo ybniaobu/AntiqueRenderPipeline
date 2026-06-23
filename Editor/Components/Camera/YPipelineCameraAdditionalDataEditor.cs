@@ -7,7 +7,7 @@ namespace YPipeline.Editor
     [CanEditMultipleObjects]
     [CustomEditor(typeof(YPipelineCamera))]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class YPipelineCameraAdditionalDataEditor : UnityEditor.Editor
+    internal sealed class YPipelineCameraAdditionalDataEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {

@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
-using YPipeline;
 
 namespace YPipeline.Editor
 {
-    public partial class YPipelineReflectionProbeEditor
+    internal sealed partial class YPipelineReflectionProbeEditor
     {
         UnityEditor.Editor m_CubemapEditor;
         UnityEditor.Editor m_OctahedralCubemapEditor;

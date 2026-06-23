@@ -12,7 +12,7 @@ namespace YPipeline
 {
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
     [DisplayName("YPipeline")]
-    public class YPipelineGlobalSettings : RenderPipelineGlobalSettings<YPipelineGlobalSettings, YRenderPipeline>
+    public sealed class YPipelineGlobalSettings : RenderPipelineGlobalSettings<YPipelineGlobalSettings, YRenderPipeline>
     {
         [SerializeField] RenderPipelineGraphicsSettingsContainer m_Settings = new();
         protected override List<IRenderPipelineGraphicsSettings> settingsList => m_Settings.settingsList;

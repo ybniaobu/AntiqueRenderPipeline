@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Post Color Grading/LUT")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class LookupTable : VolumeComponent, IPostProcessComponent
+    public sealed class LookupTable : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("A 2D Lookup Texture (LUT) to use for color grading.")]
         public TextureParameter texture = new TextureParameter(null);

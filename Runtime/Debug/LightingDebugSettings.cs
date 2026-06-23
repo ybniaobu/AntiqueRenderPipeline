@@ -1,12 +1,12 @@
-﻿using System.Diagnostics;
+﻿#if UNITY_ASSERTIONS
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    public class LightingDebugSettings
+    public sealed class LightingDebugSettings
     {
         private const string k_PanelName = "Lighting";
         public static readonly int k_TilesDebugOpacityID = Shader.PropertyToID("_TilesDebugOpacity");
@@ -76,5 +76,5 @@ namespace YPipeline
             DebugManager.instance.RemovePanel(k_PanelName);
         }
     }
-#endif
 }
+#endif

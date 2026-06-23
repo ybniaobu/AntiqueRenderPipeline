@@ -4,7 +4,7 @@ using UnityEditor.Rendering;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(ScreenSpaceAmbientOcclusion))]
-    public class ScreenSpaceAmbientOcclusionEditor : VolumeComponentEditor
+    internal sealed class ScreenSpaceAmbientOcclusionEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_AmbientOcclusionMode;
         private SerializedDataParameter m_HalfResolution;
@@ -80,8 +80,6 @@ namespace YPipeline.Editor
 
             switch (m_AmbientOcclusionMode.value.enumValueIndex)
             {
-                case (int) SSAOMode.None:
-                    break;
                 case (int) SSAOMode.SSAO:
                     PropertyField(m_HalfResolution);
                     PropertyField(m_SSAOIntensity, EditorGUIUtility.TrTextContent("Intensity"));
@@ -105,8 +103,6 @@ namespace YPipeline.Editor
                 default:
                     break;
             }
-
-            if (m_AmbientOcclusionMode.value.enumValueIndex == (int)SSAOMode.None) return;
             
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Denoise Settings", EditorStyles.boldLabel);

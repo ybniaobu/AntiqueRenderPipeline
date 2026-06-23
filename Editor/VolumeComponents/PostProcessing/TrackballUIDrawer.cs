@@ -7,7 +7,7 @@ using UnityEditor.Rendering;
 
 namespace YPipeline.Editor
 {
-    public sealed class TrackballUIDrawer
+    internal sealed class TrackballUIDrawer
     {
         private static readonly int s_ThumbHash = "colorWheelThumb".GetHashCode();
         private static GUIStyle s_WheelThumb;

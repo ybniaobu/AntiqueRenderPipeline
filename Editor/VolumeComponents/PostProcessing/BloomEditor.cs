@@ -6,7 +6,7 @@ using YPipeline;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(Bloom))]
-    public class BloomEditor : VolumeComponentEditor
+    internal sealed class BloomEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_Mode;
         private SerializedDataParameter m_Intensity;

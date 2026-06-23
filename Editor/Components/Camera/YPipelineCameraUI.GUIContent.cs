@@ -4,7 +4,7 @@ using UnityEditor;
 
 namespace YPipeline.Editor
 {
-    public static partial class YPipelineCameraUI
+    internal static partial class YPipelineCameraUI
     {
         // Expandable Header
         private static readonly GUIContent k_LensSettingsHeader = EditorGUIUtility.TrTextContent("Lens Settings");

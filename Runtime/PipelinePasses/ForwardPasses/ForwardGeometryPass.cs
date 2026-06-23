@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class ForwardGeometryPass : PipelinePass
+    internal sealed class ForwardGeometryPass : PipelinePass
     {
         private class ForwardGeometryPassData
         {
@@ -43,27 +43,21 @@ namespace YPipeline
                 builder.SetRenderAttachment(data.CameraColorAttachment, 0, AccessFlags.Write);
                 builder.SetRenderAttachmentDepth(data.CameraDepthAttachment, AccessFlags.Read);
 
+                if (data.isReflectionProbeAtlasCreated) builder.UseTexture(data.ReflectionProbeAtlas, AccessFlags.Read);
+                if (data.isSunLightShadowAtlasCreated) builder.UseTexture(data.SunLightShadowAtlas, AccessFlags.Read);
+                if (data.isPunctualLightShadowAtlasCreated) builder.UseTexture(data.PunctualLightShadowAtlas, AccessFlags.Read);
                 if (data.isIrradianceTextureCreated) builder.UseTexture(data.IrradianceTexture, AccessFlags.Read);
                 if (data.isAmbientOcclusionTextureCreated) builder.UseTexture(data.AmbientOcclusionTexture, AccessFlags.Read);
-                if (data.isSunLightShadowMapCreated) builder.UseTexture(data.SunLightShadowMap, AccessFlags.Read);
-                if (data.isPointLightShadowMapCreated) builder.UseTexture(data.PointLightShadowMap, AccessFlags.Read);
-                if (data.isSpotLightShadowMapCreated) builder.UseTexture(data.SpotLightShadowMap, AccessFlags.Read);
 
-                builder.UseBuffer(data.PunctualLightBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.PointLightShadowBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.PointLightShadowMatricesBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.SpotLightShadowBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.SpotLightShadowMatricesBufferHandle, AccessFlags.Read);
+                builder.UseBuffer(data.PunctualLightStructuredBufferHandle , AccessFlags.Read);
+                builder.UseBuffer(data.PunctualLightSliceStructuredBufferHandle , AccessFlags.Read);
                 builder.UseBuffer(data.TileLightIndicesBufferHandle, AccessFlags.Read);
                 builder.UseBuffer(data.TileReflectionProbeIndicesBufferHandle, AccessFlags.Read);
                
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((ForwardGeometryPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (ForwardGeometryPassData data, RasterGraphContext context) =>
                 {
-                    // context.cmd.SetRenderTarget(data.colorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                    //     data.depthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
-                    
                     context.cmd.BeginSample("Draw Opaque");
                     context.cmd.DrawRendererList(data.opaqueRendererList);
                     context.cmd.EndSample("Draw Opaque");

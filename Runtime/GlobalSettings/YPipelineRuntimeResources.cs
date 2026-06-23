@@ -6,7 +6,7 @@ namespace YPipeline
 {
     [Serializable]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class YPipelineRuntimeResources : IRenderPipelineResources 
+    public sealed class YPipelineRuntimeResources : IRenderPipelineResources 
     {
         [SerializeField][HideInInspector] private int m_Version = 1;
         public int version => m_Version;
@@ -158,14 +158,6 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         #region Compute Shaders
-
-        [SerializeField] [ResourcePath("Shaders/PipelineShader/DownSample/DownSample.compute")]
-        private ComputeShader m_DownSampleCS;
-        public ComputeShader DownSampleCS
-        {
-            get => m_DownSampleCS;
-            set => this.SetValueAndNotify(ref m_DownSampleCS, value, nameof(m_DownSampleCS));
-        }
         
         [SerializeField] [ResourcePath("Shaders/PipelineShader/LightCulling/TiledLightCulling.compute")]
         private ComputeShader m_TiledLightCullingCS;
@@ -174,21 +166,13 @@ namespace YPipeline
             get => m_TiledLightCullingCS;
             set => this.SetValueAndNotify(ref m_TiledLightCullingCS, value, nameof(m_TiledLightCullingCS));
         }
-        
-        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/HBIL.compute")]
-        private ComputeShader m_HBILCS;
-        public ComputeShader HBILCS
-        {
-            get => m_HBILCS;
-            set => this.SetValueAndNotify(ref m_HBILCS, value, nameof(m_HBILCS));
-        }
 
-        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/SSGIDenoise.compute")]
-        private ComputeShader m_SSGIDenoiseCS;
-        public ComputeShader SSGIDenoiseCS
+        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/Downsample.compute")]
+        private ComputeShader m_DownsampleCS;
+        public ComputeShader DownsampleCS
         {
-            get => m_SSGIDenoiseCS;
-            set => this.SetValueAndNotify(ref m_SSGIDenoiseCS, value, nameof(m_SSGIDenoiseCS));
+            get => m_DownsampleCS;
+            set => this.SetValueAndNotify(ref m_DownsampleCS, value, nameof(m_DownsampleCS));
         }
         
         [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/SSAO.compute")]
@@ -205,6 +189,30 @@ namespace YPipeline
         {
             get => m_SSAODenoiseCS;
             set => this.SetValueAndNotify(ref m_SSAODenoiseCS, value, nameof(m_SSAOCS));
+        }
+        
+        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/ScreenSpaceIrradiance.compute")]
+        private ComputeShader m_ScreenSpaceIrradianceCS;
+        public ComputeShader ScreenSpaceIrradianceCS
+        {
+            get => m_ScreenSpaceIrradianceCS;
+            set => this.SetValueAndNotify(ref m_ScreenSpaceIrradianceCS, value, nameof(m_ScreenSpaceIrradianceCS));
+        }
+        
+        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/HBIL.compute")]
+        private ComputeShader m_HBILCS;
+        public ComputeShader HBILCS
+        {
+            get => m_HBILCS;
+            set => this.SetValueAndNotify(ref m_HBILCS, value, nameof(m_HBILCS));
+        }
+
+        [SerializeField] [ResourcePath("Shaders/PipelineShader/GlobalIllumination/SSGIDenoise.compute")]
+        private ComputeShader m_SSGIDenoiseCS;
+        public ComputeShader SSGIDenoiseCS
+        {
+            get => m_SSGIDenoiseCS;
+            set => this.SetValueAndNotify(ref m_SSGIDenoiseCS, value, nameof(m_SSGIDenoiseCS));
         }
         
         #endregion

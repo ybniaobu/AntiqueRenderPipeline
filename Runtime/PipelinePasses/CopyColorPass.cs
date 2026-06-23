@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace YPipeline
 {
-    public class CopyColorPass : PipelinePass
+    internal sealed class CopyColorPass : PipelinePass
     {
         private class CopyColorPassData
         {
@@ -19,25 +19,40 @@ namespace YPipeline
 
         protected override void OnRecord(ref YPipelineData data)
         {
-            // 注意 CopyTexture 的兼容问题，看情况是否改为 AddBlitPass。
-            using (var builder = data.renderGraph.AddUnsafePass<CopyColorPassData>("Copy Color", out var passData))
+            if (SystemInfo.copyTextureSupport > CopyTextureSupport.None)
             {
-                passData.colorAttachment = data.CameraColorAttachment;
-                builder.UseTexture(data.CameraColorAttachment, AccessFlags.Read);
-                passData.colorTexture = data.CameraColorTexture;
-                builder.UseTexture(data.CameraColorTexture, AccessFlags.Write);
-                
-                builder.SetGlobalTextureAfterPass(data.CameraColorTexture, YPipelineShaderIDs.k_ColorTextureID);
-                builder.AllowPassCulling(false);
-                
-                builder.SetRenderFunc((CopyColorPassData data, UnsafeGraphContext context) =>
+                using (var builder = data.renderGraph.AddUnsafePass<CopyColorPassData>("Copy Color", out var passData))
                 {
-                    // bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
-                    // if (copyTextureSupported) context.cmd.CopyTexture(data.colorAttachment, data.colorTexture);
-                    // else BlitUtility.BlitTexture(context.cmd, data.colorAttachment, data.colorTexture);
+                    passData.colorAttachment = data.CameraColorAttachment;
+                    builder.UseTexture(data.CameraColorAttachment, AccessFlags.Read);
+                    passData.colorTexture = data.CameraColorTexture;
+                    builder.UseTexture(data.CameraColorTexture, AccessFlags.Write);
                     
-                    context.cmd.CopyTexture(data.colorAttachment, data.colorTexture);
-                });
+                    builder.SetGlobalTextureAfterPass(data.CameraColorTexture, YPipelineShaderIDs.k_ColorTextureID);
+                    builder.AllowPassCulling(false);
+                    
+                    builder.SetRenderFunc(static (CopyColorPassData data, UnsafeGraphContext context) =>
+                    {
+                        context.cmd.CopyTexture(data.colorAttachment, data.colorTexture);
+                    });
+                }
+            }
+            else
+            {
+                using (var builder = data.renderGraph.AddRasterRenderPass<CopyColorPassData>("Copy Color", out var passData))
+                {
+                    passData.colorAttachment = data.CameraColorAttachment;
+                    builder.UseTexture(passData.colorAttachment, AccessFlags.Read);
+                    
+                    builder.SetRenderAttachment(data.CameraColorTexture, 0, AccessFlags.Write);
+                    builder.SetGlobalTextureAfterPass(data.CameraColorTexture, YPipelineShaderIDs.k_ColorTextureID);
+                    builder.AllowPassCulling(false);
+                
+                    builder.SetRenderFunc(static (CopyColorPassData data, RasterGraphContext context) => 
+                    {
+                        BlitHelper.BlitTexture(context.cmd, data.colorAttachment);
+                    });
+                }
             }
         }
     }

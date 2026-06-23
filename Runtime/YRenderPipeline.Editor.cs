@@ -6,7 +6,7 @@ using LightType = UnityEngine.LightType;
 
 namespace YPipeline
 {
-    public partial class YRenderPipeline
+    public sealed partial class YRenderPipeline
     {
 #if UNITY_EDITOR
         // ----------------------------------------------------------------------------------------------------
@@ -51,21 +51,21 @@ namespace YPipeline
                         DirectionalLight directionalLight = new DirectionalLight();
                         LightmapperUtils.Extract(light, ref directionalLight);
                         directionalLight.color.intensity /= Mathf.PI;
-                        directionalLight.indirectColor.intensity /= Mathf.PI;
+                        // directionalLight.indirectColor.intensity /= Mathf.PI;
                         lightData.Init(ref directionalLight);
                         break;
                     case LightType.Point:
                         PointLight pointLight = new PointLight();
                         LightmapperUtils.Extract(light, ref pointLight);
                         pointLight.color.intensity /= Mathf.PI;
-                        pointLight.indirectColor.intensity /= Mathf.PI;
+                        // pointLight.indirectColor.intensity /= Mathf.PI;
                         lightData.Init(ref pointLight);
                         break;
                     case LightType.Spot:
                         SpotLight spotLight = new SpotLight();
                         LightmapperUtils.Extract(light, ref spotLight);
                         spotLight.color.intensity /= Mathf.PI;
-                        spotLight.indirectColor.intensity /= Mathf.PI;
+                        // spotLight.indirectColor.intensity /= Mathf.PI;
                         spotLight.innerConeAngle = light.innerSpotAngle * Mathf.Deg2Rad;
                         spotLight.angularFalloff = AngularFalloffType.AnalyticAndInnerAngle;
                         lightData.Init(ref spotLight);
@@ -74,7 +74,7 @@ namespace YPipeline
                         RectangleLight rectangleLight = new RectangleLight();
                         LightmapperUtils.Extract(light, ref rectangleLight);
                         rectangleLight.color.intensity /= Mathf.PI;
-                        rectangleLight.indirectColor.intensity /= Mathf.PI;
+                        // rectangleLight.indirectColor.intensity /= Mathf.PI;
                         rectangleLight.mode = LightMode.Baked;
                         lightData.Init(ref rectangleLight);
                         break;
@@ -82,7 +82,7 @@ namespace YPipeline
                         DiscLight discLight = new DiscLight();
                         LightmapperUtils.Extract(light, ref discLight);
                         discLight.color.intensity /= Mathf.PI;
-                        discLight.indirectColor.intensity /= Mathf.PI;
+                        // discLight.indirectColor.intensity /= Mathf.PI;
                         discLight.mode = LightMode.Baked;
                         lightData.Init(ref discLight);
                         break;

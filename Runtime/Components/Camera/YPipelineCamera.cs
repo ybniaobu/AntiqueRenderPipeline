@@ -24,21 +24,18 @@ namespace YPipeline
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
     [ExecuteAlways] // NOTE: This is required to get calls to OnDestroy() always. Graphics resources are released in OnDestroy().
-    public class YPipelineCamera : MonoBehaviour, IAdditionalData
+    public sealed class YPipelineCamera : MonoBehaviour, IAdditionalData
     {
         public Camera Camera => GetComponent<Camera>();
-        [NonSerialized] public YPipelinePerCameraData perCameraData;
+        [NonSerialized] internal YPipelinePerCameraData perCameraData = new YPipelinePerCameraData();
 
-        public void OnEnable()
-        {
-            perCameraData = new YPipelinePerCameraData();
-        }
-
+#if UNITY_EDITOR
         public void OnDisable()
         {
             perCameraData?.Dispose();
             perCameraData = null;
         }
+#endif
 
         public void OnDestroy()
         {

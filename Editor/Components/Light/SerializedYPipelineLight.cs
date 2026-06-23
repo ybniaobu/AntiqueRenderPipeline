@@ -4,7 +4,7 @@ using UnityEditor.Rendering;
 
 namespace YPipeline.Editor
 {
-    public class SerializedYPipelineLight : ISerializedLight
+    internal sealed class SerializedYPipelineLight : ISerializedLight
     {
         public LightEditor.Settings settings { get; }
         public SerializedObject serializedObject { get; }
@@ -20,6 +20,7 @@ namespace YPipeline.Editor
         // YPipeline Light Properties
         public SerializedProperty rangeAttenuationScale;
         
+        public SerializedProperty shadowResolution;
         public SerializedProperty shadowTint;
         public SerializedProperty penumbraTint;
         public SerializedProperty depthBias;
@@ -29,8 +30,9 @@ namespace YPipeline.Editor
         
         public SerializedProperty penumbraWidth;
         public SerializedProperty sampleCount;
-        
-        public SerializedProperty lightSize;
+
+        public SerializedProperty angularDiameter;
+        public SerializedProperty lightRadius;
         public SerializedProperty blockerSearchAreaSizeScale;
         public SerializedProperty penumbraScale;
         public SerializedProperty minPenumbraWidth;
@@ -54,6 +56,7 @@ namespace YPipeline.Editor
             // YPipeline Light Properties
             rangeAttenuationScale = serializedAdditionalDataObject.FindProperty("rangeAttenuationScale");
             
+            shadowResolution = serializedAdditionalDataObject.FindProperty("shadowResolution");
             shadowTint = serializedAdditionalDataObject.FindProperty("shadowTint");
             penumbraTint = serializedAdditionalDataObject.FindProperty("penumbraTint");
             
@@ -65,7 +68,8 @@ namespace YPipeline.Editor
             penumbraWidth = serializedAdditionalDataObject.FindProperty("penumbraWidth");
             sampleCount = serializedAdditionalDataObject.FindProperty("sampleCount");
             
-            lightSize = serializedAdditionalDataObject.FindProperty("lightSize");
+            angularDiameter = serializedAdditionalDataObject.FindProperty("angularDiameter");
+            lightRadius = serializedAdditionalDataObject.FindProperty("lightRadius");
             blockerSearchAreaSizeScale = serializedAdditionalDataObject.FindProperty("blockerSearchAreaSizeScale");
             penumbraScale = serializedAdditionalDataObject.FindProperty("penumbraScale");
             minPenumbraWidth = serializedAdditionalDataObject.FindProperty("minPenumbraWidth");

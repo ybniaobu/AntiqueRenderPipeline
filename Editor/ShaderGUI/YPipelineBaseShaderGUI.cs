@@ -1,11 +1,10 @@
 ﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using YPipeline;
 
 namespace YPipeline.Editor
 {
-    public abstract class YPipelineBaseShaderGUI : ShaderGUI
+    internal abstract class YPipelineBaseShaderGUI : ShaderGUI
     {
         protected virtual bool ShowDefaultGUI { get; set; } = false;
         

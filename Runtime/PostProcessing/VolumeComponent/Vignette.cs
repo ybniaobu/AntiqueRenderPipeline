@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Post Color Grading/Vignette")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class Vignette : VolumeComponent, IPostProcessComponent
+    public sealed class Vignette : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("Specifies the color of the vignette.")]
         public ColorParameter color = new ColorParameter(Color.black, false, false, true);

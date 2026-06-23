@@ -7,7 +7,7 @@ namespace YPipeline.Editor
 {
     using CED = CoreEditorDrawer<SerializedYPipelineCamera>;
     
-    public static partial class YPipelineCameraUI
+    internal static partial class YPipelineCameraUI
     {
         public static readonly CED.IDrawer PhysicalCameraDrawer = 
             CED.Conditional(

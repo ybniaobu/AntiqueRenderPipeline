@@ -5,7 +5,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class TAASubPass : PostProcessingSubPass
+    internal sealed class TAASubPass : PostProcessingSubPass
     {
         private class TAAPassData
         {
@@ -94,7 +94,7 @@ namespace YPipeline
                 TextureDesc taaTargetDesc = new TextureDesc(bufferSize.x, bufferSize.y)
                 {
                     format = GraphicsFormat.R16G16B16A16_SFloat,
-                    clearBuffer = true,
+                    clearBuffer = false,
                     anisoLevel = 0,
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp,
@@ -107,7 +107,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
             
-                builder.SetRenderFunc((TAAPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (TAAPassData data, UnsafeGraphContext context) =>
                 {
                     context.cmd.BeginSample("TAABlendHistory");
                     data.material.SetVector(YPipelineShaderIDs.k_TAAParamsID, data.taaParams);
@@ -126,11 +126,9 @@ namespace YPipeline
                     context.cmd.EndSample("TAABlendHistory");
                     
                     context.cmd.BeginSample("TAACopyHistory");
-                    // bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
-                    // if (copyTextureSupported) context.cmd.CopyTexture(data.taaTarget, data.taaHistory);
-                    // else BlitUtility.BlitTexture(context.cmd, data.taaTarget, data.taaHistory);
-
-                    context.cmd.CopyTexture(data.taaTarget, data.taaHistory);
+                    bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
+                    if (copyTextureSupported) context.cmd.CopyTexture(data.taaTarget, data.taaHistory);
+                    else BlitHelper.BlitTexture(context.cmd, data.taaTarget, data.taaHistory);
                     context.cmd.EndSample("TAACopyHistory");
                 });
             }
@@ -138,20 +136,38 @@ namespace YPipeline
 
         public void CopySceneColor(ref YPipelineData data)
         {
-            // 看情况是否改为 AddCopyPass 或 AddBlitPass。
-            using (var builder = data.renderGraph.AddUnsafePass<TAAPassData>("Copy Scene Color", out var passData))
+            if (SystemInfo.copyTextureSupport > CopyTextureSupport.None)
             {
-                passData.colorAttachment = data.CameraColorAttachment;
-                builder.UseTexture(data.CameraColorAttachment, AccessFlags.Read);
-                passData.taaHistory = data.SceneHistory;
-                builder.UseTexture(data.SceneHistory, AccessFlags.ReadWrite);
-                
-                builder.AllowPassCulling(false);
-
-                builder.SetRenderFunc((TAAPassData data, UnsafeGraphContext context) =>
+                using (var builder = data.renderGraph.AddUnsafePass<TAAPassData>("Copy Scene Color", out var passData))
                 {
-                    context.cmd.CopyTexture(data.colorAttachment, data.taaHistory);
-                });
+                    passData.colorAttachment = data.CameraColorAttachment;
+                    builder.UseTexture(data.CameraColorAttachment, AccessFlags.Read);
+                    passData.taaHistory = data.SceneHistory;
+                    builder.UseTexture(data.SceneHistory, AccessFlags.Write);
+                    
+                    builder.AllowPassCulling(false);
+
+                    builder.SetRenderFunc(static (TAAPassData data, UnsafeGraphContext context) =>
+                    {
+                        context.cmd.CopyTexture(data.colorAttachment, data.taaHistory);
+                    });
+                }
+            }
+            else
+            {
+                using (var builder = data.renderGraph.AddRasterRenderPass<TAAPassData>("Copy Scene Color", out var passData))
+                {
+                    passData.colorAttachment = data.CameraColorAttachment;
+                    builder.UseTexture(data.CameraColorAttachment, AccessFlags.Read);
+                    
+                    builder.SetRenderAttachment(data.SceneHistory, 0, AccessFlags.Write);
+                    builder.AllowPassCulling(false);
+                    
+                    builder.SetRenderFunc(static (TAAPassData data, RasterGraphContext context) =>
+                    {
+                        BlitHelper.BlitTexture(context.cmd, data.colorAttachment);
+                    });
+                }
             }
         }
     }

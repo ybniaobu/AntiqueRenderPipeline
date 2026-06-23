@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace YPipeline
 {
-    public class ReflectionCameraRenderer : CameraRenderer
+    internal sealed class ReflectionCameraRenderer : CameraRenderer
     {
         protected override void Initialize(ref YPipelineData data)
         {
@@ -12,14 +12,9 @@ namespace YPipeline
             
         }
         
-        public override void Dispose()
-        {
-            base.Dispose();
-        }
-        
         public override void Render(ref YPipelineData data)
         {
-            base.Render(ref data);
+            RecordAndExecuteRenderGraph(ref data);
         }
     }
 }

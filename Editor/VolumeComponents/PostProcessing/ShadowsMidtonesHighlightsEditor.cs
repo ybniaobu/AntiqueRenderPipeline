@@ -9,7 +9,7 @@ using YPipeline;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(ShadowsMidtonesHighlights))]
-    public class ShadowsMidtonesHighlightsEditor : VolumeComponentEditor
+    internal sealed class ShadowsMidtonesHighlightsEditor : VolumeComponentEditor
     {
         private static class Styles
         {

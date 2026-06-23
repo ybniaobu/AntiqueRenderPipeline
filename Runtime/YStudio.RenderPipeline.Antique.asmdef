@@ -6,18 +6,15 @@
         "GUID:69257879134bba646869b21467b3338d",
         "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
-    "includePlatforms": [],
-    "excludePlatforms": [
-        "Android",
-        "EmbeddedLinux",
-        "iOS",
-        "Kepler",
-        "LinuxStandalone64",
-        "CloudRendering",
-        "QNX",
-        "tvOS",
-        "WebGL"
+    "includePlatforms": [
+        "Editor",
+        "macOSStandalone",
+        "Switch2",
+        "PS5",
+        "WindowsStandalone64",
+        "GameCoreScarlett"
     ],
+    "excludePlatforms": [],
     "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],

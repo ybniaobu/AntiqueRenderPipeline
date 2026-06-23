@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class PreviewDrawPass : PipelinePass
+    internal sealed class PreviewDrawPass : PipelinePass
     {
         private class DrawPassData
         {
@@ -91,20 +91,10 @@ namespace YPipeline
                 builder.SetRenderAttachment(data.CameraColorTarget, 0, AccessFlags.Write);
                 builder.SetRenderAttachmentDepth(data.CameraDepthTarget, AccessFlags.ReadWrite);
                 
-                builder.UseBuffer(data.PunctualLightBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.PointLightShadowBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.PointLightShadowMatricesBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.SpotLightShadowBufferHandle, AccessFlags.Read);
-                builder.UseBuffer(data.SpotLightShadowMatricesBufferHandle, AccessFlags.Read);
-                
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((DrawPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (DrawPassData data, RasterGraphContext context) =>
                 {
-                    // context.cmd.SetRenderTarget(data.colorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                    //     data.depthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
-                    // context.cmd.ClearRenderTarget(true, true, Color.clear);
-                    
                     context.cmd.DrawRendererList(data.opaqueRendererList);
                     context.cmd.DrawRendererList(data.alphaTestRendererList);
                     context.cmd.DrawRendererList(data.errorRendererList);

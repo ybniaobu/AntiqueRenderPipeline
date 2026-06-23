@@ -5,7 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class TransparencyPass : PipelinePass
+    internal sealed class TransparencyPass : PipelinePass
     {
         private class TransparencyPassData
         {
@@ -36,7 +36,7 @@ namespace YPipeline
                 builder.SetRenderAttachmentDepth(data.CameraDepthAttachment, AccessFlags.Read);
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((TransparencyPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (TransparencyPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.transparencyRendererList);
                 });

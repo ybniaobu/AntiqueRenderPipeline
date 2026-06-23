@@ -8,7 +8,7 @@ using UnityEngine.Serialization;
 namespace YPipeline
 {
     [CreateAssetMenu(menuName = "YPipeline/YRenderPipelineAsset")]
-    public class YRenderPipelineAsset : RenderPipelineAsset<YRenderPipeline>, IProbeVolumeEnabledRenderPipeline, IRenderGraphEnabledRenderPipeline
+    public sealed class YRenderPipelineAsset : RenderPipelineAsset<YRenderPipeline>, IProbeVolumeEnabledRenderPipeline, IRenderGraphEnabledRenderPipeline
     {
         // ----------------------------------------------------------------------------------------------------
         // RenderPipelineAsset
@@ -55,13 +55,10 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         public RenderPath renderPath = RenderPath.DeferredPlus;
-        
         public bool enableSRPBatcher = true;
-        
         [Range(0.1f, 2f)] public float renderScale = 1.0f;
         
         public AntiAliasingMode antiAliasingMode = AntiAliasingMode.TAA;
-        
         public FXAAMode fxaaMode = FXAAMode.Quality;
         
         // ----------------------------------------------------------------------------------------------------
@@ -69,11 +66,13 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         
         // Light Culling
-        public bool enableSplitDepth = true;
+        public bool enableSplitDepth = true; // 2.5D culling
         
-        // Reflection Probes Culling
-        public Quality3Tier reflectionProbeQuality = Quality3Tier.High;
+        // Reflection Probe
+        public HDRFormat reflectionProbeAtlasFormat = HDRFormat.R11G11B10;
+        public ReflectionProbeAtlasSize reflectionProbeAtlasSize = ReflectionProbeAtlasSize._4096;
         [Range(4, 16)] public int maxReflectionProbesOnScreen = 8;
+        public Quality3Tier reflectionProbeQuality = Quality3Tier.Medium;
         
         // Global Illumination
         public bool enableScreenSpaceAmbientOcclusion = true;
@@ -81,6 +80,7 @@ namespace YPipeline
         public bool enableScreenSpaceReflection = false;
         
         // APV
+        public bool enableProbeVolumeScreenSpaceIrradiance = true;
         public ProbeVolumeSHBands probeVolumeSHBands = ProbeVolumeSHBands.SphericalHarmonicsL1;
         public ProbeVolumeTextureMemoryBudget probeVolumeMemoryBudget = ProbeVolumeTextureMemoryBudget.MemoryBudgetMedium;
         public bool supportProbeVolumeGPUStreaming = true;
@@ -92,24 +92,18 @@ namespace YPipeline
         // ----------------------------------------------------------------------------------------------------
         // 阴影配置 Shadow Settings
         // ----------------------------------------------------------------------------------------------------
-        
         public ShadowMode shadowMode = ShadowMode.PCSS;
         
+        public SunLightShadowAtlasSize sunLightShadowAtlasSize = SunLightShadowAtlasSize._4096;
         public float maxShadowDistance = 100.0f;
-        
         [Range(0f, 1f)] public float distanceFade = 0.05f;
-        
         [Range(1, 4)] public int cascadeCount = 4;
-        
         [SerializeField]
-        [Range(0f, 1f)] private float spiltRatio1 = 0.15f, spiltRatio2 = 0.3f, spiltRatio3 = 0.6f;
+        [Range(0f, 1f)] private float spiltRatio1 = 0.05f, spiltRatio2 = 0.15f, spiltRatio3 = 0.45f;
         public Vector3 SpiltRatios => new Vector3(spiltRatio1, spiltRatio2, spiltRatio3);
         
-        [Range(0f, 1f)] public float cascadeEdgeFade = 0.05f;
-        
-        public ResolutionSize sunLightShadowMapSize = ResolutionSize._4096;
-        public ResolutionSize spotLightShadowMapSize = ResolutionSize._1024;
-        public ResolutionSize pointLightShadowMapSize = ResolutionSize._1024;
+        public PunctualLightShadowAtlasSize punctualLightShadowAtlasSize = PunctualLightShadowAtlasSize._8192x4096;
+        public Quality3Tier punctualLightShadowQuality = Quality3Tier.Medium;
         
         // ----------------------------------------------------------------------------------------------------
         // 后处理配置 Post Processing Settings

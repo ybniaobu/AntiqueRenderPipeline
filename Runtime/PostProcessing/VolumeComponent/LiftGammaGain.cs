@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Color Grading/Lift Gamma Gain")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class LiftGammaGain : VolumeComponent, IPostProcessComponent
+    public sealed class LiftGammaGain : VolumeComponent, IPostProcessComponent
     {
         public Vector4Parameter lift = new Vector4Parameter(new Vector4(1f, 1f, 1f, 0f));
         

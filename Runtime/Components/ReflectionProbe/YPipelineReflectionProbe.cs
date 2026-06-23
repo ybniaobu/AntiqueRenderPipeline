@@ -17,7 +17,7 @@ namespace YPipeline
     [DisallowMultipleComponent]
     [RequireComponent(typeof(ReflectionProbe))]
     [ExecuteAlways]
-    public class YPipelineReflectionProbe : MonoBehaviour, IAdditionalData
+    public sealed class YPipelineReflectionProbe : MonoBehaviour, IAdditionalData
     {
         public bool cubemapPreviewByNormal;
         
@@ -35,5 +35,18 @@ namespace YPipeline
         // Properties
         public ReflectionProbe Probe => GetComponent<ReflectionProbe>();
         public bool IsReady => isOctahedralAtlasBaked && isSHBaked;
+       
+#if UNITY_EDITOR
+        public void OnDestroy()
+        {
+            // Object.DestroyImmediate(octahedralAtlasLow);
+            // Object.DestroyImmediate(octahedralAtlasMedium);
+            // Object.DestroyImmediate(octahedralAtlasHigh);
+            octahedralAtlasLow = null;
+            octahedralAtlasMedium = null;
+            octahedralAtlasHigh = null;
+            SHData = null;
+        }
+#endif
     }
 }

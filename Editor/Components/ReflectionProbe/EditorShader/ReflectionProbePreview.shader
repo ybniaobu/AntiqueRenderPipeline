@@ -46,6 +46,7 @@
             TEXTURECUBE(_Cubemap);
             SAMPLER(sampler_Cubemap);
             float4 _Cubemap_HDR;
+            float4x4 _RotationMatrix;
             float _MipLevel;
             float _Exposure;
             int _SampleByNormal;
@@ -68,11 +69,13 @@
                 {
                     float3 V = normalize(_WorldSpaceCameraPos - IN.positionWS);
                     float3 R = reflect(-V, normalize(IN.normalWS));
+                    R = mul((float3x3)_RotationMatrix, R);
                     color = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, R, _MipLevel).rgba;
                 }
                 else
                 {
                     float3 N = normalize(IN.normalWS);
+                    N = mul((float3x3)_RotationMatrix, N);
                     color = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, N, _MipLevel).rgba;
                 }
                 
@@ -114,6 +117,7 @@
                 float3 normalWS     : TEXCOORD1;
             };
             
+            float4x4 _RotationMatrix;
             float4 _SH[7];
             int _SampleByReflection;
             
@@ -133,11 +137,13 @@
                 {
                     float3 V = normalize(_WorldSpaceCameraPos - IN.positionWS);
                     float3 R = reflect(-V, normalize(IN.normalWS));
+                    R = mul((float3x3)_RotationMatrix, R);
                     color = SampleSphericalHarmonics(R, _SH);
                 }
                 else
                 {
                     float3 N = normalize(IN.normalWS);
+                    N = mul((float3x3)_RotationMatrix, N);
                     color = SampleSphericalHarmonics(N, _SH);
                 }
                 return float4(color, 1.0);

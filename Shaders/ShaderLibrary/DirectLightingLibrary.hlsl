@@ -2,6 +2,7 @@
 #define YPIPELINE_DIRECT_LIGHTING_LIBRARY_INCLUDED
 
 #include "../ShaderLibrary/ShadowsLibrary.hlsl"
+#include "Utils/CubemapUtilsLib.hlsl"
 
 // ----------------------------------------------------------------------------------------------------
 // Tiled Light Culling
@@ -39,7 +40,7 @@ float GetDistanceAttenuation(float3 lightVector, float lightRange, float attenua
     smoothFactor = lerp(smoothFactor, 1, attenuationScale);
     smoothFactor = lerp(smoothFactor, 0, isOutRange);
     
-    return (smoothFactor * smoothFactor) / max(distanceSquare, 0.5); // 防止灯光离物体太近导致太亮
+    return (smoothFactor * smoothFactor) / max(distanceSquare, 0.1); // Prevent the light from excessive brightness when it is too close to the object
     // return (smoothFactor * smoothFactor) / max(distanceSquare, 1e-4);
 }
 
@@ -62,7 +63,7 @@ struct LightParams
     float3 H;
     float distanceAttenuation;
     float angleAttenuation;
-    bool isShadowing;
+    bool isCastingShadow;
     float3 shadowAttenuation;
     // uint layerMask;
 };
@@ -85,10 +86,10 @@ void InitializeSunLightParams(out LightParams sunLightParams, float3 V, float3 n
     sunLightParams.H = normalize(sunLightParams.L + V);
     sunLightParams.distanceAttenuation = 1.0;
     sunLightParams.angleAttenuation = 1.0;
-    sunLightParams.isShadowing = IsSunLightShadowing();
+    sunLightParams.isCastingShadow = IsSunLightShadowing();
 
     UNITY_BRANCH
-    if (sunLightParams.isShadowing)
+    if (sunLightParams.isCastingShadow)
     {
         #if defined(_SHADOW_PCSS)
         sunLightParams.shadowAttenuation = GetSunLightShadowAttenuation_PCSS(positionWS, normalWS, sunLightParams.L, pixelCoord);
@@ -98,7 +99,7 @@ void InitializeSunLightParams(out LightParams sunLightParams, float3 V, float3 n
     }
     else
     {
-        sunLightParams.shadowAttenuation = float3(1, 1, 1);
+        sunLightParams.shadowAttenuation = 1.0;
     }
 }
 
@@ -120,14 +121,10 @@ void InitializeSpotLightParams(out LightParams spotLightParams, int lightIndex, 
     float2 spotAngleParams = GetSpotLightAngleParams(lightIndex);
     spotLightParams.angleAttenuation = GetAngleAttenuation(spotLightParams.L, spotDirection, spotAngleParams);
     
-    spotLightParams.isShadowing = spotLightParams.distanceAttenuation * spotLightParams.angleAttenuation <= 0.0 || GetShadowingLightIndex(lightIndex) < 0.0;
+    spotLightParams.isCastingShadow = spotLightParams.distanceAttenuation * spotLightParams.angleAttenuation > 1e-6 && GetPunctualLightSliceIndex(lightIndex) > -0.5;
     
     UNITY_BRANCH
-    if (spotLightParams.isShadowing) // 反了，待更改
-    {
-        spotLightParams.shadowAttenuation = 1.0;
-    }
-    else
+    if (spotLightParams.isCastingShadow)
     {
         float linearDepth = abs(dot(lightVector, spotDirection));
         #if defined(_SHADOW_PCSS)
@@ -135,6 +132,10 @@ void InitializeSpotLightParams(out LightParams spotLightParams, int lightIndex, 
         #elif defined(_SHADOW_PCF)
             spotLightParams.shadowAttenuation = GetSpotLightShadowAttenuation_PCF(lightIndex, positionWS, normalWS, spotLightParams.L, linearDepth, pixelCoord);
         #endif
+    }
+    else
+    {
+        spotLightParams.shadowAttenuation = 1.0;
     }
 }
 
@@ -150,16 +151,12 @@ void InitializePointLightParams(out LightParams pointLightParams, int lightIndex
     pointLightParams.distanceAttenuation = GetDistanceAttenuation(lightVector, GetPunctualLightRange(lightIndex), GetPunctualLightRangeAttenuationScale(lightIndex));
     pointLightParams.angleAttenuation = 1.0;
 
-    pointLightParams.isShadowing = pointLightParams.distanceAttenuation <= 0.0 || GetShadowingLightIndex(lightIndex) < 0.0;
+    pointLightParams.isCastingShadow = pointLightParams.distanceAttenuation > 1e-6 || GetPunctualLightSliceIndex(lightIndex) > -0.5;
     
     UNITY_BRANCH
-    if (pointLightParams.isShadowing) // 反了，待更改
+    if (pointLightParams.isCastingShadow)
     {
-        pointLightParams.shadowAttenuation = 1.0;
-    }
-    else
-    {
-        float faceIndex = CubeMapFaceID(-pointLightParams.L);
+        int faceIndex = GetCubeMapFaceIDFast(-pointLightParams.L);
         float linearDepth = abs(dot(lightVector, k_CubeMapFaceDir[faceIndex]));
         #if defined(_SHADOW_PCSS)
             pointLightParams.shadowAttenuation = GetPointLightShadowAttenuation_PCSS(lightIndex, faceIndex, positionWS, normalWS, pointLightParams.L, linearDepth, pixelCoord);
@@ -167,8 +164,10 @@ void InitializePointLightParams(out LightParams pointLightParams, int lightIndex
             pointLightParams.shadowAttenuation = GetPointLightShadowAttenuation_PCF(lightIndex, faceIndex, positionWS, normalWS, pointLightParams.L, linearDepth, pixelCoord);
         #endif
     }
+    else
+    {
+        pointLightParams.shadowAttenuation = 1.0;
+    }
 }
-
-
 
 #endif

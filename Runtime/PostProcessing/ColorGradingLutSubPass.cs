@@ -5,7 +5,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class ColorGradingLutSubPass : PostProcessingSubPass
+    internal sealed class ColorGradingLutSubPass : PostProcessingSubPass
     {
         private class ColorGradingLutPassData
         {
@@ -49,6 +49,12 @@ namespace YPipeline
         {
             m_ColorGradingLutMaterial = new Material(data.runtimeResources.ColorGradingLutShader);
             m_ColorGradingLutMaterial.hideFlags = HideFlags.HideAndDontSave;
+            
+            var stack = VolumeManager.instance.stack;
+            m_GlobalColorCorrections = stack.GetComponent<GlobalColorCorrections>();
+            m_ShadowsMidtonesHighlights = stack.GetComponent<ShadowsMidtonesHighlights>();
+            m_LiftGammaGain = stack.GetComponent<LiftGammaGain>();
+            m_ToneMapping = stack.GetComponent<ToneMapping>();
         }
 
         public override void OnDispose()
@@ -64,12 +70,6 @@ namespace YPipeline
 
         public override void OnRecord(ref YPipelineData data)
         {
-            var stack = VolumeManager.instance.stack;
-            m_GlobalColorCorrections = stack.GetComponent<GlobalColorCorrections>();
-            m_ShadowsMidtonesHighlights = stack.GetComponent<ShadowsMidtonesHighlights>();
-            m_LiftGammaGain = stack.GetComponent<LiftGammaGain>();
-            m_ToneMapping = stack.GetComponent<ToneMapping>();
-
             using (var builder = data.renderGraph.AddRasterRenderPass<ColorGradingLutPassData>("Color Grading Lut", out var passData))
             {
                 passData.material = m_ColorGradingLutMaterial;
@@ -162,7 +162,7 @@ namespace YPipeline
                 }
                 passData.toneMappingPass = toneMappingPass;
 
-                builder.SetRenderFunc((ColorGradingLutPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (ColorGradingLutPassData data, RasterGraphContext context) =>
                 {
                     // Lut
                     data.material.SetVector(YPipelineShaderIDs.k_ColorGradingLUTParamsID, data.colorGradingLUTParams);

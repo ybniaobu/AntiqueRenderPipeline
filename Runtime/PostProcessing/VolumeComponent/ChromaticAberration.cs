@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Post Color Grading/Chromatic Aberration")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class ChromaticAberration : VolumeComponent, IPostProcessComponent
+    public sealed class ChromaticAberration : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("Use the slider to set the strength of the Chromatic Aberration effect.")]
         public ClampedFloatParameter intensity = new ClampedFloatParameter(0f, 0f, 1f);

@@ -193,7 +193,7 @@ float3 AgXEotf(float3 val)
     
     // sRGB IEC 61966-2-1 2.2 Exponent Reference EOTF Display
     // NOTE: We're linearizing the output here. Comment/adjust when not using a sRGB render target
-    val = pow(val, 2.2);
+    val = PositivePow(val, 2.2);
     
     return val;
 }
@@ -225,7 +225,7 @@ float3 AgXLook_Golden(float3 val)
     float sat = 0.8;
     
     // ASC CDL
-    val = pow(val * slope + offset, power);
+    val = PositivePow(val * slope + offset, power);
     return luma + sat * (val - luma);
 }
 
@@ -240,7 +240,7 @@ float3 AgXLook_Punchy(float3 val)
     float sat = 1.4;
     
     // ASC CDL
-    val = pow(val * slope + offset, power);
+    val = PositivePow(val * slope + offset, power);
     return luma + sat * (val - luma);
 }
 

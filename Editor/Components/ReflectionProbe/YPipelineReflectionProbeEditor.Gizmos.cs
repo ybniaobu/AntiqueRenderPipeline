@@ -6,7 +6,7 @@ using UnityEditor.SceneManagement;
 
 namespace YPipeline.Editor
 {
-    public partial class YPipelineReflectionProbeEditor
+    internal sealed partial class YPipelineReflectionProbeEditor
     {
         private static Mesh m_Sphere;
         private static Material m_PreviewMaterial;
@@ -26,7 +26,7 @@ namespace YPipeline.Editor
             Color oldColor = Gizmos.color;
             // 绘制 Reflection Probe 影响范围
             Gizmos.color = new Color(1.0f, 0.667f, 0.333f, 1.0f);
-            Matrix4x4 probeMatrix = Matrix4x4.TRS(probe.transform.position, Quaternion.identity, Vector3.one);
+            Matrix4x4 probeMatrix = Matrix4x4.TRS(probe.transform.position, probe.transform.rotation, Vector3.one);
             Gizmos.matrix = probeMatrix;
             Gizmos.DrawWireCube(probe.center, probe.size);
             
@@ -41,6 +41,7 @@ namespace YPipeline.Editor
             
             m_PreviewMaterial.SetTexture("_Cubemap", probe.texture);
             m_PreviewMaterial.SetVector("_Cubemap_HDR", probe.textureHDRDecodeValues);
+            m_PreviewMaterial.SetMatrix("_RotationMatrix", Matrix4x4.TRS(probe.transform.position, probe.transform.rotation, Vector3.one).transpose); // 旋转矩阵是正交矩阵（逆矩阵是转置矩阵）
             m_PreviewMaterial.SetInteger("_SampleByNormal", probe.GetYPipelineReflectionProbe().cubemapPreviewByNormal ? 1 : 0);
             m_PreviewMaterial.SetPass(0);
             Graphics.DrawMeshNow(m_Sphere, probeMatrix);
@@ -50,7 +51,7 @@ namespace YPipeline.Editor
                 m_PreviewMaterial.SetVectorArray("_SH", probe.GetYPipelineReflectionProbe().SHData);
                 m_PreviewMaterial.SetInteger("_SampleByReflection", probe.GetYPipelineReflectionProbe().SHPreviewByReflection ? 1 : 0);
                 m_PreviewMaterial.SetPass(1);
-                probeMatrix = Matrix4x4.TRS(probe.transform.position + new Vector3(0, 1, 0), Quaternion.identity, Vector3.one);
+                probeMatrix = Matrix4x4.TRS(probe.transform.position + new Vector3(0, 1, 0), probe.transform.rotation, Vector3.one);
                 Graphics.DrawMeshNow(m_Sphere, probeMatrix);
             }
         }

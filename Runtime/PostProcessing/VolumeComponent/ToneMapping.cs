@@ -61,7 +61,7 @@ namespace YPipeline
     
     [System.Serializable, VolumeComponentMenu("Post Processing/Color Grading/Tone Mapping")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class ToneMapping : VolumeComponent, IPostProcessComponent
+    public sealed class ToneMapping : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("色调映射模式 Select a tonemapping operator to use for the color grading process.")]
         public TonemappingModeParameter mode = new TonemappingModeParameter(TonemappingMode.ACES, true);

@@ -12,7 +12,7 @@ namespace YPipeline.Editor
     using CurveState = InspectorCurveEditor.CurveState;
     
     [CustomEditor(typeof(GlobalColorCorrections))]
-    public class GlobalColorCorrectionsEditor : VolumeComponentEditor
+    internal sealed class GlobalColorCorrectionsEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_Temperature;
         private SerializedDataParameter m_Tint;

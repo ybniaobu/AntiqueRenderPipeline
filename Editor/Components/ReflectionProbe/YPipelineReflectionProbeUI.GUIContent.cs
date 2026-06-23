@@ -4,7 +4,7 @@ using UnityEditor;
 
 namespace YPipeline.Editor
 {
-    public static partial class YPipelineReflectionProbeUI
+    internal static partial class YPipelineReflectionProbeUI
     {
         // Mode Settings
         private static readonly int[] k_ModeValues = { (int)ReflectionProbeMode.Baked, (int)ReflectionProbeMode.Custom, (int)ReflectionProbeMode.Realtime };

@@ -6,7 +6,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class ScreenSpaceAmbientOcclusionPass : PipelinePass
+    internal sealed class ScreenSpaceAmbientOcclusionPass : PipelinePass
     {
         private class AmbientOcclusionPassData
         {
@@ -54,7 +54,7 @@ namespace YPipeline
 
         protected override void OnRecord(ref YPipelineData data)
         {
-            bool ssaoEnabled = data.IsSSAOEnabled && m_AO.IsActive();
+            bool ssaoEnabled = data.IsSSAOEnabled;
             data.isAmbientOcclusionTextureCreated = ssaoEnabled;
             CoreUtils.SetKeyword(data.cmd, YPipelineKeywords.k_ScreenSpaceAmbientOcclusion, ssaoEnabled);
             if (!ssaoEnabled) return;
@@ -191,7 +191,7 @@ namespace YPipeline
                 
                 builder.AllowPassCulling(false);
 
-                builder.SetRenderFunc((AmbientOcclusionPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (AmbientOcclusionPassData data, UnsafeGraphContext context) =>
                 {
                     bool enableDenoise = data.enableBilateralDenoise || data.enableTemporalDenoise;
                     bool enableTemporalDenoise = data.enableTemporalDenoise;
@@ -200,7 +200,7 @@ namespace YPipeline
 
                     // SSAO
                     context.cmd.BeginSample("SSAO Compute");
-                    LocalKeyword halfResKeyword = new LocalKeyword(data.ssaoCS, "_HALF_RESOLUTION");
+                    LocalKeyword halfResKeyword = new LocalKeyword(data.ssaoCS, YPipelineKeywords.k_HalfResolution);
                     context.cmd.SetKeyword(data.ssaoCS, halfResKeyword, data.enableHalfResolution);
                     context.cmd.SetComputeVectorParam(data.ssaoCS, "_TextureSize", data.textureSize);
                     context.cmd.SetComputeVectorParam(data.ssaoCS, YPipelineShaderIDs.k_SSAOParamsID, data.ssaoParams);
@@ -237,7 +237,7 @@ namespace YPipeline
                     // Denoise
                     if (enableDenoise || enableHalfResolution)
                     {
-                        LocalKeyword halfResKeyword2 = new LocalKeyword(data.denoiseCS, "_HALF_RESOLUTION");
+                        LocalKeyword halfResKeyword2 = new LocalKeyword(data.denoiseCS, YPipelineKeywords.k_HalfResolution);
                         context.cmd.SetKeyword(data.denoiseCS, halfResKeyword2, enableHalfResolution);
                         context.cmd.SetComputeVectorParam(data.denoiseCS, "_TextureSize", data.textureSize);
                         context.cmd.SetComputeVectorParam(data.denoiseCS, YPipelineShaderIDs.k_SSAODenoiseParamsID, data.denoiseParams);
@@ -288,6 +288,7 @@ namespace YPipeline
                         int upsampleKernel = data.denoiseCS.FindKernel("UpsampleKernel");
                         context.cmd.SetComputeTextureParam(data.denoiseCS, upsampleKernel, "_InputTexture", data.transition1);
                         context.cmd.SetComputeTextureParam(data.denoiseCS, upsampleKernel, "_OutputTexture", data.aoTexture);
+                        context.cmd.SetComputeTextureParam(data.denoiseCS, upsampleKernel, YPipelineShaderIDs.k_HalfNormalRoughnessTextureID, data.halfNormalRoughnessTexture);
                         context.cmd.DispatchCompute(data.denoiseCS, upsampleKernel, data.threadGroupSizesFull8.x, data.threadGroupSizesFull8.y, 1);
                         context.cmd.EndSample("SSAO Upsample");
                     }

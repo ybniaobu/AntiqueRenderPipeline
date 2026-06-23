@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Color Grading/Global Color Corrections")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class GlobalColorCorrections : VolumeComponent, IPostProcessComponent
+    public sealed class GlobalColorCorrections : VolumeComponent, IPostProcessComponent
     {
         [Header("White Balance")]
         [Tooltip("Sets the white balance to a custom color temperature.")]

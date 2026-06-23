@@ -5,7 +5,7 @@ namespace YPipeline
 {
     [System.Serializable, VolumeComponentMenu("Post Processing/Color Grading/Shadows Midtones Highlights")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class ShadowsMidtonesHighlights : VolumeComponent, IPostProcessComponent
+    public sealed class ShadowsMidtonesHighlights : VolumeComponent, IPostProcessComponent
     {
         public Vector4Parameter shadows = new Vector4Parameter(new Vector4(1f, 1f, 1f, 0f));
         public Vector4Parameter midtones = new Vector4Parameter(new Vector4(1f, 1f, 1f, 0f));

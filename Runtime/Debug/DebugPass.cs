@@ -1,10 +1,11 @@
-﻿using UnityEngine;
+﻿#if UNITY_ASSERTIONS
+using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class DebugPass : PipelinePass
+    internal sealed class DebugPass : PipelinePass
     {
         private class DebugPassData
         {
@@ -47,3 +48,4 @@ namespace YPipeline
         }
     }
 }
+#endif

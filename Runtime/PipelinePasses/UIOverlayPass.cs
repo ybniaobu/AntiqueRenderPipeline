@@ -4,7 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace YPipeline
 {
-    public class UIOverlayPass : PipelinePass
+    internal sealed class UIOverlayPass : PipelinePass
     {
         private class UGUIPassData
         {
@@ -34,7 +34,7 @@ namespace YPipeline
                 builder.SetRenderAttachment(data.CameraColorTarget, 0, AccessFlags.Write);
                 builder.SetRenderAttachmentDepth(data.CameraDepthTarget, AccessFlags.ReadWrite);
 
-                builder.SetRenderFunc((UGUIPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (UGUIPassData data, RasterGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.uguiRendererList);
                 });
@@ -52,7 +52,7 @@ namespace YPipeline
                 
                 builder.SetRenderAttachment(data.CameraColorTarget, 0, AccessFlags.Write);
 
-                builder.SetRenderFunc((IMGUIPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (IMGUIPassData data, UnsafeGraphContext context) =>
                 {
                     context.cmd.DrawRendererList(data.imguiRendererList);
                 });

@@ -6,7 +6,7 @@ namespace YPipeline
 {
     public enum SSAOMode
     {
-        None, SSAO, HBAO, GTAO
+        SSAO, HBAO, GTAO
     }
     
     [System.Serializable]
@@ -17,7 +17,7 @@ namespace YPipeline
     
     [System.Serializable, VolumeComponentMenu("Global Illumination/Ambient Occlusion")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class ScreenSpaceAmbientOcclusion : VolumeComponent, IPostProcessComponent
+    public sealed class ScreenSpaceAmbientOcclusion : VolumeComponent
     {
         [Tooltip("屏幕空间环境光遮蔽算法 Choose a screen space ambient occlusion algorithm.")]
         public AmbientOcclusionModeParameter ambientOcclusionMode = new AmbientOcclusionModeParameter(SSAOMode.GTAO, true);
@@ -42,10 +42,10 @@ namespace YPipeline
         [Tooltip("采样半径 Sampling radius. Bigger the radius, wider ambient occlusion will be achieved.")]
         public ClampedFloatParameter hbaoRadius = new ClampedFloatParameter(1.0f, 0.0f, 4.0f);
         
-        [Tooltip("步进方向数 Number of directions on the AO hemisphere.")]
+        [Tooltip("步进方向数 Number of directions/slices on the AO hemisphere.")]
         public ClampedIntParameter hbaoDirectionCount = new ClampedIntParameter(4, 2, 8);
         
-        [Tooltip("步进步数 Number of steps during horizon search.")]
+        [Tooltip("步进步数 Number of steps to take along one direction/slices during horizon search. The total number of samples taken per pixel is directionCount * stepCount.")]
         public ClampedIntParameter hbaoStepCount = new ClampedIntParameter(4, 2, 8);
         
         // GTAO
@@ -55,15 +55,15 @@ namespace YPipeline
         [Tooltip("采样半径 Sampling radius. Bigger the radius, wider ambient occlusion will be achieved.")]
         public ClampedFloatParameter gtaoRadius = new ClampedFloatParameter(1.0f, 0.0f, 4.0f);
         
-        [Tooltip("步进方向数 Number of directions on the AO hemisphere.")]
+        [Tooltip("步进方向数 Number of directions/slices on the AO hemisphere.")]
         public ClampedIntParameter gtaoDirectionCount = new ClampedIntParameter(2, 1, 6);
         
-        [Tooltip("步进步数 Number of steps during horizon search.")]
+        [Tooltip("步进步数 Number of steps to take along one direction/slices during horizon search. The total number of samples taken per pixel is directionCount * stepCount * 2.")]
         public ClampedIntParameter gtaoStepCount = new ClampedIntParameter(4, 2, 12);
         
         // Denoise
         [Tooltip("绝对深度阈值 Rejects pixel averaging when the depth difference is above the value. Lower value achieves a better effect in edge preservation but could introduces false edges.")]
-        public ClampedFloatParameter absoluteDepthThreshold = new ClampedFloatParameter(0.25f, 0.0f, 2.0f);
+        public ClampedFloatParameter absoluteDepthThreshold = new ClampedFloatParameter(0.5f, 0.0f, 2.0f);
         
         [Tooltip("相对深度阈值 Rejects pixel averaging when the depth difference is above the percentage. Lower percentage achieves a better effect in edge preservation but could introduces false edges.")]
         public ClampedFloatParameter relativeDepthThreshold = new ClampedFloatParameter(0.05f, 0.0f, 0.2f);
@@ -80,7 +80,5 @@ namespace YPipeline
         
         [Tooltip("标准差 The standard deviation of the Gaussian function, higher value results in blurrier result.")]
         public ClampedFloatParameter sigma = new ClampedFloatParameter(2.0f, 0.0f, 8.0f);
-        
-        public bool IsActive() => ambientOcclusionMode.value != SSAOMode.None;
     }
 }

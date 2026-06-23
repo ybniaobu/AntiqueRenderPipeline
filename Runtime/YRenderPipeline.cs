@@ -10,13 +10,14 @@ using UnityEditor;
 
 namespace YPipeline
 {
-    public partial class YRenderPipeline : RenderPipeline
+    public sealed partial class YRenderPipeline : RenderPipeline
     {
         private YPipelineData m_Data;
         private GameCameraRenderer m_GameCameraRenderer;
-        private ReflectionCameraRenderer m_ReflectionCameraRenderer;
         
 #if UNITY_EDITOR
+        private SceneCameraRenderer m_SceneCameraRenderer;
+        private ReflectionCameraRenderer m_ReflectionCameraRenderer;
         private PreviewCameraRenderer m_PreviewCameraRenderer;
 #endif
         
@@ -27,25 +28,27 @@ namespace YPipeline
             m_Data.asset = asset;
             m_Data.runtimeResources = GraphicsSettings.GetRenderPipelineSettings<YPipelineRuntimeResources>();
             m_Data.renderGraph = new RenderGraph("YPipeline Render Graph");
-            m_Data.lightsData = new YPipelineLightsData();
-            m_Data.reflectionProbesData = new YPipelineReflectionProbesData();
+            m_Data.lightData = new YPipelineLightData();
+            m_Data.reflectionProbeData = new YPipelineReflectionProbeData();
             
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_ASSERTIONS
             m_Data.debugSettings = new DebugSettings();
 #endif
             
             // Initialization & Settings
             SetGraphicsAndQualitySettings();
             RTHandles.Initialize(Screen.width, Screen.height);
-            VolumeManager.instance.Initialize(null, asset.globalVolumeProfile);
+            var defaultVolumeProfileResource = GraphicsSettings.GetRenderPipelineSettings<YPipelineDefaultVolumeProfileResource>();
+            VolumeManager.instance.Initialize(defaultVolumeProfileResource.volumeProfile, asset.globalVolumeProfile);
             BlitHelper.Initialize();
 
             // Camera Renderer
             m_GameCameraRenderer = CameraRenderer.Create<GameCameraRenderer>(ref m_Data);
-            m_ReflectionCameraRenderer = CameraRenderer.Create<ReflectionCameraRenderer>(ref m_Data);
             
 #if UNITY_EDITOR
+            m_SceneCameraRenderer = CameraRenderer.Create<SceneCameraRenderer>(ref m_Data);
             m_PreviewCameraRenderer = CameraRenderer.Create<PreviewCameraRenderer>(ref m_Data);
+            m_ReflectionCameraRenderer = CameraRenderer.Create<ReflectionCameraRenderer>(ref m_Data);
             
             // Editor
             SetSupportedRenderingFeatures();
@@ -53,25 +56,7 @@ namespace YPipeline
 #endif
             
             // APV
-            m_Data.isAPVEnabled = asset != null && asset.supportProbeVolume;
-            SupportedRenderingFeatures.active.overridesLightProbeSystem = m_Data.isAPVEnabled;
-            SupportedRenderingFeatures.active.skyOcclusion = m_Data.isAPVEnabled;
-            if (m_Data.isAPVEnabled)
-            {
-                ProbeVolumeSystemParameters apvParams = new ProbeVolumeSystemParameters()
-                {
-                    memoryBudget = asset.probeVolumeMemoryBudget,
-                    blendingMemoryBudget = asset.probeVolumeBlendingMemoryBudget,
-                    shBands = asset.probeVolumeSHBands,
-                    supportGPUStreaming = asset.supportProbeVolumeGPUStreaming,
-                    supportDiskStreaming = asset.supportProbeVolumeDiskStreaming,
-                    supportScenarios = asset.supportProbeVolumeScenarios,
-                    supportScenarioBlending = asset.supportProbeVolumeScenarioBlending,
-                };
-                ProbeReferenceVolume.instance.Initialize(apvParams);
-                ProbeReferenceVolume.instance.SetEnableStateFromSRP(true);
-                ProbeReferenceVolume.instance.SetVertexSamplingEnabled(false);
-            }
+            APVUtils.InitializeAPV(ref m_Data);
         }
         
         protected override void Dispose(bool disposing)
@@ -81,19 +66,20 @@ namespace YPipeline
             
 #if UNITY_EDITOR
             UnityEngine.Experimental.GlobalIllumination.Lightmapping.ResetDelegate();
-            m_PreviewCameraRenderer.Dispose();
+            m_SceneCameraRenderer?.Dispose();
+            m_SceneCameraRenderer = null;
+            m_PreviewCameraRenderer?.Dispose();
             m_PreviewCameraRenderer = null;
+            m_ReflectionCameraRenderer?.Dispose();
+            m_ReflectionCameraRenderer = null;
 #endif
+            m_GameCameraRenderer?.Dispose();
+            m_GameCameraRenderer = null;
             
             ConstantBuffer.ReleaseAll();
             VolumeManager.instance.Deinitialize();
             m_Data.Dispose();
             BlitHelper.Dispose();
-            
-            m_GameCameraRenderer.Dispose();
-            m_GameCameraRenderer = null;
-            m_ReflectionCameraRenderer.Dispose();
-            m_ReflectionCameraRenderer = null;
         }
 
         protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
@@ -105,22 +91,21 @@ namespace YPipeline
             {
                 m_Data.camera = camera;
                 m_Data.cmd = CommandBufferPool.Get();
-                VolumeManager.instance.Update(camera.transform, 1);
+                VolumeManager.instance.Update(camera.transform, 1); // TODO：是否改为每个 camera 维持一个？
 
                 switch (camera.cameraType)
                 {
-                    case CameraType.SceneView: 
-                        m_GameCameraRenderer.Render(ref m_Data);
-                        break;
 #if UNITY_EDITOR
+                    case CameraType.SceneView: 
+                        m_SceneCameraRenderer.Render(ref m_Data);
+                        break;
                     case CameraType.Preview:
                         m_PreviewCameraRenderer.Render(ref m_Data);
-                        // m_GameCameraRenderer.Render(ref m_Data);
                         break;
-#endif
                     case CameraType.Reflection:  // TODO：反射探针不能用 depth prepass 渲染，效果不好 ！！！！！！！！！！！！！！
                         m_GameCameraRenderer.Render(ref m_Data);
                         break;
+#endif
                     case CameraType.Game:
                         m_GameCameraRenderer.Render(ref m_Data);
                         break;

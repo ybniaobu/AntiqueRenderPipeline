@@ -5,7 +5,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class UberPostProcessingSubPass : PostProcessingSubPass
+    internal sealed class UberPostProcessingSubPass : PostProcessingSubPass
     {
         private class UberPostPassData
         {
@@ -83,6 +83,12 @@ namespace YPipeline
         {
             m_UberPostProcessingMaterial = new Material(data.runtimeResources.UberPostProcessingShader);
             m_UberPostProcessingMaterial.hideFlags = HideFlags.HideAndDontSave;
+            
+            var stack = VolumeManager.instance.stack;
+            m_ChromaticAberration = stack.GetComponent<ChromaticAberration>();
+            m_Bloom = stack.GetComponent<Bloom>();
+            m_Vignette = stack.GetComponent<Vignette>();
+            m_LookupTable = stack.GetComponent<LookupTable>();
         }
 
         public override void OnDispose()
@@ -105,12 +111,6 @@ namespace YPipeline
 
         public override void OnRecord(ref YPipelineData data)
         {
-            var stack = VolumeManager.instance.stack;
-            m_ChromaticAberration = stack.GetComponent<ChromaticAberration>();
-            m_Bloom = stack.GetComponent<Bloom>();
-            m_Vignette = stack.GetComponent<Vignette>();
-            m_LookupTable = stack.GetComponent<LookupTable>();
-
             using (var builder = data.renderGraph.AddRasterRenderPass<UberPostPassData>("Uber Post Processing", out var passData))
             {
                 passData.material = m_UberPostProcessingMaterial;
@@ -217,7 +217,7 @@ namespace YPipeline
                     m_ExtraLut?.Release();
                 }
                 
-                builder.SetRenderFunc((UberPostPassData data, RasterGraphContext context) =>
+                builder.SetRenderFunc(static (UberPostPassData data, RasterGraphContext context) =>
                 {
                     // Chromatic Aberration
                     CoreUtils.SetKeyword(data.material, YPipelineKeywords.k_ChromaticAberration, data.isChromaticAberrationEnabled);

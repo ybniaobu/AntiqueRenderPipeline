@@ -7,7 +7,7 @@ using YPipeline;
 namespace YPipeline.Editor
 {
     [CustomEditor(typeof(FilmGrain))]
-    public class FilmGrainEditor : VolumeComponentEditor
+    internal sealed class FilmGrainEditor : VolumeComponentEditor
     {
         private SerializedDataParameter m_Type;
         private SerializedDataParameter m_Intensity;

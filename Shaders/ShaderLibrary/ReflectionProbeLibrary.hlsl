@@ -70,9 +70,14 @@ int FindBestReflectionProbe(float2 screenUV, float3 positionWS)
 
 bool IsGreater(int importanceA, float distSqrA, int importanceB, float distSqrB)
 {
-    if (importanceA > importanceB) return true;
-    if (importanceA < importanceB) return false;
-    return distSqrA < distSqrB;  // importance 相等时, 比较 distSqr
+    // if (importanceA > importanceB) return true;
+    // if (importanceA < importanceB) return false;
+    // return distSqrA < distSqrB;  // importance 相等时, 比较 distSqr
+    
+    bool greater = (importanceA > importanceB);
+    bool equal = (importanceA == importanceB);
+    bool distLess = (distSqrA < distSqrB);
+    return greater || (equal && distLess);
 }
 
 // 根据优先级、离像素点距离来找到最合适的二个 Reflection Probe，用于后续混合
@@ -132,7 +137,7 @@ float3 SampleReflectionProbeAtlas(int probeIndex, float3 dir, float mipmap)
     int mip0 = (int) floor(mipmap);
     int right0 = (mip0 + 1) >> 1;
     int up0 = mip0 >> 1;
-    float2 coord0 = leftBottomCoord + size * (float2((1.0 - pow(0.25, right0)) * 4.0 / 3.0, (1.0 - pow(0.25, up0)) * 2.0 / 3.0) + uv * exp2(-mip0)); // 等比数列求和
+    float2 coord0 = leftBottomCoord + size * (float2((1.0 - exp2(-2 * right0)) * 4.0 / 3.0, (1.0 - exp2(-2 * up0)) * 2.0 / 3.0) + uv * exp2(-mip0)); // 等比数列求和
     // float3 color0 = LOAD_TEXTURE2D_LOD(_ReflectionProbeAtlas, coord0, 0).rgb;
     float2 uv0 = coord0 * _ReflectionProbeAtlas_TexelSize.xy;
     uv0 = lerp(uv0 + indent, uv0 - indent, uv);
@@ -141,7 +146,7 @@ float3 SampleReflectionProbeAtlas(int probeIndex, float3 dir, float mipmap)
     int mip1 = mip0 + 1;
     int right1 = (mip1 + 1) >> 1;
     int up1 = right0;
-    float2 coord1 = leftBottomCoord + size * (float2((1.0 - pow(0.25, right1)) * 4.0 / 3.0, (1.0 - pow(0.25, up1)) * 2.0 / 3.0) + uv * exp2(-mip1)); // 等比数列求和
+    float2 coord1 = leftBottomCoord + size * (float2((1.0 - exp2(-2 * right1)) * 4.0 / 3.0, (1.0 - exp2(-2 * up1)) * 2.0 / 3.0) + uv * exp2(-mip1)); // 等比数列求和
     // float3 color1 = LOAD_TEXTURE2D_LOD(_ReflectionProbeAtlas, coord1, 0).rgb;
     float2 uv1 = coord1 * _ReflectionProbeAtlas_TexelSize.xy;
     uv1 = lerp(uv1 + indent, uv1 - indent, uv);
@@ -155,22 +160,53 @@ float3 SampleReflectionProbeAtlas(int probeIndex, float3 dir, float mipmap)
 // Parallax Correction
 // ----------------------------------------------------------------------------------------------------
 
-float3 GetParallaxCorrectionDirection(int probeIndex, float3 R, float3 positionWS)
+// AABB Version
+float3 GetParallaxCorrectionDirection_AABB(int probeIndex, float3 R, float3 positionWS)
 {
+    UNITY_BRANCH
     if (IsReflectionProbeBoxProjection(probeIndex))
     {
         float3 invR = rcp(R + 1e-6);
         float3 boxCenter = GetReflectionProbeBoxCenter(probeIndex);
         float3 boxExtent = GetReflectionProbeBoxExtent(probeIndex);
         AABBMinMax aabb = BuildAABBMinMax(boxCenter, boxExtent);
-        float3 t1 = (aabb.min - positionWS) * invR;
-        float3 t2 = (aabb.max - positionWS) * invR;
+        float3 t1 = (aabb.min - positionWS + 1e-4) * invR;
+        float3 t2 = (aabb.max - positionWS - 1e-4) * invR;
         
         float3 tMax = max(t1, t2);
         float t = min(tMax.x, min(tMax.y, tMax.z));
         t = max(t, 0.0);
         float3 intersection = positionWS + R * t;
         return normalize(intersection - GetReflectionProbePosition(probeIndex));
+    }
+    else
+    {
+        return R;
+    }
+}
+
+// OBB Version
+float3 GetParallaxCorrectionDirection_OBB(int probeIndex, float3 R, float3 positionWS)
+{
+    UNITY_BRANCH
+    if (IsReflectionProbeBoxProjection(probeIndex))
+    {
+        float4x4 worldToLocal = GetReflectionProbeMatrix(probeIndex);
+        float3 rayLS = mul((float3x3) worldToLocal, R);
+        float3 positionLS = mul(worldToLocal, float4(positionWS, 1.0)).xyz;
+        float3 invRayLS = rcp(rayLS + 1e-6);
+        
+        static const float3 unitary = float3(1.0f, 1.0f, 1.0f);
+        float3 t1 = (-unitary - positionLS) * invRayLS;
+        float3 t2 = (unitary - positionLS) * invRayLS;
+        
+        float3 tMax = max(t1, t2);
+        float t = min(tMax.x, min(tMax.y, tMax.z));
+        t = max(t, 0.0);
+        
+        float3 intersectionLS = positionLS + rayLS * t;
+        float3 intersectionWS = intersectionLS * GetReflectionProbeBoxExtent(probeIndex) + GetReflectionProbeBoxCenter(probeIndex);
+        return normalize(intersectionWS - GetReflectionProbePosition(probeIndex));
     }
     else
     {
@@ -187,7 +223,8 @@ float3 ReflectionProbeNormalization(float3 rawReflection, float3 irradiance, flo
     float4 SH[7];
     GetReflectionProbeSH(probeIndex, SH);
     float3 probeSH = SampleSphericalHarmonics(R, SH);
-    float3 normalizedReflection = rawReflection / (probeSH + 1e-6);
+    probeSH = max(probeSH, 1e-4);
+    float3 normalizedReflection = rawReflection / probeSH;
     return normalizedReflection * irradiance;
 }
 
@@ -196,6 +233,7 @@ float3 ReflectionProbeNormalization_Luminance(float3 rawReflection, float3 irrad
     float4 SH[7];
     GetReflectionProbeSH(probeIndex, SH);
     float probeSHLuma = Luminance(SampleSphericalHarmonics(R, SH));
+    probeSHLuma = max(probeSHLuma, 1e-4);
     float3 normalizedReflection = rawReflection / probeSHLuma;
     return normalizedReflection * Luminance(irradiance);
 }
@@ -203,15 +241,17 @@ float3 ReflectionProbeNormalization_Luminance(float3 rawReflection, float3 irrad
 // Only For Global Reflection Probe
 float3 ReflectionProbeNormalization(float3 rawReflection, float3 irradiance, float3 R)
 {
-    float3 probeSH = EvaluateAmbientProbe(R);
-    float3 normalizedReflection = rawReflection / (probeSH + 1e-6);
+    float3 probeSH = EvaluateRawAmbientProbe(R);
+    probeSH = max(probeSH, 1e-4);
+    float3 normalizedReflection = rawReflection / probeSH;
     return normalizedReflection * irradiance;
 }
 
 // Only For Global Reflection Probe
 float3 ReflectionProbeNormalization_Luminance(float3 rawReflection, float3 irradiance, float3 R)
 {
-    float probeSHLuma = Luminance(EvaluateAmbientProbe(R));
+    float probeSHLuma = Luminance(EvaluateRawAmbientProbe(R));
+    probeSHLuma = max(probeSHLuma, 1e-4);
     float3 normalizedReflection = rawReflection / probeSHLuma;
     return normalizedReflection * Luminance(irradiance);
 }
@@ -230,7 +270,7 @@ inline float3 GetGlobalPrefilteredEnvColor(float mipmap, float3 R)
 inline float3 GetGlobalPrefilteredEnvColor(float mipmap, float3 R, float3 irradiance)
 {
     float3 rawReflection = SampleGlobalReflectionProbe(R, mipmap);
-    return ReflectionProbeNormalization(rawReflection, irradiance, R);
+    return ReflectionProbeNormalization_Luminance(rawReflection, irradiance, R);
 }
 
 // No Parallax Correction & No Normalization Version, For Local Reflection Probe
@@ -244,7 +284,8 @@ inline float3 GetPrefilteredEnvColor(int probeIndex, float mipmap, float3 R)
 inline float3 GetPrefilteredEnvColor(int probeIndex, float mipmap, float3 R, float3 positionWS)
 {
     float intensity = GetReflectionProbeIntensity(probeIndex);
-    float3 correctedR = GetParallaxCorrectionDirection(probeIndex, R, positionWS);
+    // float3 correctedR = GetParallaxCorrectionDirection_AABB(probeIndex, R, positionWS);
+    float3 correctedR = GetParallaxCorrectionDirection_OBB(probeIndex, R, positionWS);
     return SampleReflectionProbeAtlas(probeIndex, correctedR, mipmap) * intensity;
 }
 
@@ -252,9 +293,10 @@ inline float3 GetPrefilteredEnvColor(int probeIndex, float mipmap, float3 R, flo
 inline float3 GetPrefilteredEnvColor(int probeIndex, float mipmap, float3 R, float3 positionWS, float3 irradiance)
 {
     float intensity = GetReflectionProbeIntensity(probeIndex);
-    float3 correctedR = GetParallaxCorrectionDirection(probeIndex, R, positionWS);
+    // float3 correctedR = GetParallaxCorrectionDirection_AABB(probeIndex, R, positionWS);
+    float3 correctedR = GetParallaxCorrectionDirection_OBB(probeIndex, R, positionWS);
     float3 rawReflection = SampleReflectionProbeAtlas(probeIndex, correctedR, mipmap);
-    return ReflectionProbeNormalization(rawReflection, irradiance, correctedR, probeIndex) * intensity;
+    return ReflectionProbeNormalization_Luminance(rawReflection, irradiance, correctedR, probeIndex) * intensity;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -276,7 +318,7 @@ float CalculateProbeWeight(int probeIndex, float3 positionWS)
     float3 boxCenter = GetReflectionProbeBoxCenter(probeIndex);
     float3 boxExtent = GetReflectionProbeBoxExtent(probeIndex);
     AABBMinMax aabb = BuildAABBMinMax(boxCenter, boxExtent);
-    float3 weights = min(positionWS - aabb.min, aabb.max - positionWS) / blendDistance;
+    float3 weights = min(positionWS - aabb.min + 1e-4, aabb.max - positionWS + 1e-4) / blendDistance;
     return saturate(min(weights.x, min(weights.y, weights.z)));
 }
 

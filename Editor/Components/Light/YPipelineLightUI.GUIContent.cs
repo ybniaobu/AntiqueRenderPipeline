@@ -4,7 +4,7 @@ using UnityEditor;
 
 namespace YPipeline.Editor
 {
-    public static partial class YPipelineLightUI
+    internal static partial class YPipelineLightUI
     {
         // Expandable Header
         private static readonly GUIContent k_ShadowSettingsHeader = EditorGUIUtility.TrTextContent("Shadow Settings");
@@ -29,6 +29,10 @@ namespace YPipeline.Editor
         // Shadow Settings
         private static readonly GUIContent k_EnableShadowText = EditorGUIUtility.TrTextContent("Enable Shadow", "是否开启阴影 If enabled, the light casts shadow");
         
+        private static readonly GUIContent[] k_ShadowResolutionTitles = { EditorGUIUtility.TrTextContent("128"), EditorGUIUtility.TrTextContent("256"), EditorGUIUtility.TrTextContent("512"), EditorGUIUtility.TrTextContent("1024"), EditorGUIUtility.TrTextContent("2048") };
+        private static readonly int[] k_ShadowResolutionValues = { 128, 256, 512, 1024, 2048 };
+        private static readonly GUIContent k_ShadowResolutionText = EditorGUIUtility.TrTextContent("Resolution", "阴影分辨率 Controls the resolution of the shadow map used for this light.");
+        
         private static readonly GUIContent k_ShadowsStrengthText = EditorGUIUtility.TrTextContent("Strength", "阴影强度 Controls how dark the shadows cast by the light will be.");
         private static readonly GUIContent k_ShadowsNearPlaneText = EditorGUIUtility.TrTextContent("Near Plane", "阴影近平面偏移 Controls the value for the near clip plane when rendering shadows.");
         
@@ -43,10 +47,11 @@ namespace YPipeline.Editor
         private static readonly GUIContent K_PenumbraWidthText = EditorGUIUtility.TrTextContent("Penumbra Width", "阴影的半影宽度 Controls the width of the shadow's penumbra. Higher value results in higher softness.");
         private static readonly GUIContent K_SampleCountText = EditorGUIUtility.TrTextContent("Sample Count", "阴影采样数量 Controls the number of samples to blur the shadow.");
         
-        private static readonly GUIContent K_LightSizeText = EditorGUIUtility.TrTextContent("Light Size", "PCSS 待更改参数！！！");
-        private static readonly GUIContent K_BlockerSearchAreaSizeScaleText = EditorGUIUtility.TrTextContent("Blocker Search Area Size Scale", "PCSS 待更改参数！！！");
+        private static readonly GUIContent K_AngularDiameterText = EditorGUIUtility.TrTextContent("Angular Diameter (Degree)", "角直径（角度） Solar angular diameter: mean ~0.5332° (0.009308 rad), varies from 0.524° to 0.542° due to eccentricity. Lunar angular diameter: Mean: ~0.5286° (0.009226 rad). Varies 0.489°–0.568° due to orbital eccentricity.");
+        private static readonly GUIContent K_LightRadiusText = EditorGUIUtility.TrTextContent("Light Radius", "灯光半径 Determines the width of the penumbra.");
+        private static readonly GUIContent K_BlockerSearchAreaSizeScaleText = EditorGUIUtility.TrTextContent("Blocker Search Area Size Scale", "遮挡物搜索区域大小缩放参数 Scales the size of the area used to search for blockers. A value that is too low will restrict the penumbra width, while a value that is too high will cause shadow holes. As the occluder height increases, this value should be raised accordingly.");
         private static readonly GUIContent K_BlockerSearchSampleCountText = EditorGUIUtility.TrTextContent("Blocker Search Sample Count", "遮挡物搜索阶段采样数量 Controls the number of samples to determine the depth of blocker.");
-        private static readonly GUIContent k_PenumbraScaleText = EditorGUIUtility.TrTextContent("Penumbra Scale", "控制半影宽度 Multiplier on the Light Size. Scales the width of the shadow's penumbra.");
+        private static readonly GUIContent k_PenumbraScaleText = EditorGUIUtility.TrTextContent("Penumbra Scale", "半影宽度缩放参数 Scales the width of the shadow's penumbra.");
         private static readonly GUIContent k_MinPenumbraWidthText = EditorGUIUtility.TrTextContent("Min Penumbra Width", "最小半影宽度 Controls the minimum width of the shadow's penumbra.");
         private static readonly GUIContent k_FilterSampleCountText = EditorGUIUtility.TrTextContent("Filter Sample Count", "阴影过滤阶段采样数量 Controls the number of samples to blur the shadow.");
     }

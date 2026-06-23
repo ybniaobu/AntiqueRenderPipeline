@@ -19,7 +19,7 @@ namespace YPipeline
     
     [System.Serializable, VolumeComponentMenu("Post Processing/Post Color Grading/Film Grain")]
     [SupportedOnRenderPipeline(typeof(YRenderPipelineAsset))]
-    public class FilmGrain : VolumeComponent, IPostProcessComponent
+    public sealed class FilmGrain : VolumeComponent, IPostProcessComponent
     {
         [Tooltip("Specifies the type of grain to use. Select a preset or select \"Custom\" to provide your own Texture.")]
         public FilmGrainKindsParameter type = new FilmGrainKindsParameter(FilmGrainKinds.Thin1);

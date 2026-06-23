@@ -5,7 +5,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace YPipeline
 {
-    public class BloomSubPass : PostProcessingSubPass
+    internal sealed class BloomSubPass : PostProcessingSubPass
     {
         private class BloomPassData
         {
@@ -36,6 +36,9 @@ namespace YPipeline
         {
             m_BloomMaterial = new Material(data.runtimeResources.BloomShader);
             m_BloomMaterial.hideFlags = HideFlags.HideAndDontSave;
+            
+            var stack = VolumeManager.instance.stack;
+            m_Bloom = stack.GetComponent<Bloom>();
         }
 
         public override void OnDispose()
@@ -48,10 +51,9 @@ namespace YPipeline
 
         public override void OnRecord(ref YPipelineData data)
         {
-            var stack = VolumeManager.instance.stack;
-            m_Bloom = stack.GetComponent<Bloom>();
-
-            // TODO：看看 URP 怎么 RasterPass 的。
+            if (!m_Bloom.IsActive()) return;
+            
+            // TODO：优化 Bloom !!!!!!!!!!!!!!!
             using (var builder = data.renderGraph.AddUnsafePass<BloomPassData>("Bloom", out var passData, ProfilingSampler.Get(YPipelineProfileIDs.Bloom)))
             {
                 passData.material = m_BloomMaterial;
@@ -144,7 +146,7 @@ namespace YPipeline
                     passData.bloomMode = m_Bloom.mode.value;
                 }
 
-                builder.SetRenderFunc((BloomPassData data, UnsafeGraphContext context) =>
+                builder.SetRenderFunc(static (BloomPassData data, UnsafeGraphContext context) =>
                 {
                     if (data.isBloomEnabled)
                     {
@@ -155,7 +157,7 @@ namespace YPipeline
                         
                         // Prefilter
                         context.cmd.BeginSample("Prefilter");
-                        BlitHelper.BlitGlobalTexture(context.cmd, data.inputTexture, data.bloomPrefilteredTexture, data.material, 0);
+                        BlitHelper.BlitTexture(context.cmd, data.inputTexture, data.bloomPrefilteredTexture, data.material, 0);
                         context.cmd.EndSample("Prefilter");
                         
                         // Downsample - gaussian pyramid
@@ -163,8 +165,8 @@ namespace YPipeline
                         TextureHandle source = data.bloomPrefilteredTexture;
                         for (int i = 0; i < data.iterationCount; i++)
                         {
-                            BlitHelper.BlitGlobalTexture(context.cmd, source, data.bloomPyramidUpTextures[i], data.material, 1);
-                            BlitHelper.BlitGlobalTexture(context.cmd, data.bloomPyramidUpTextures[i], data.bloomPyramidDownTextures[i], data.material, 2);
+                            BlitHelper.BlitTexture(context.cmd, source, data.bloomPyramidUpTextures[i], data.material, 1);
+                            BlitHelper.BlitTexture(context.cmd, data.bloomPyramidUpTextures[i], data.bloomPyramidDownTextures[i], data.material, 2);
                             source = data.bloomPyramidDownTextures[i];
                         }
                         context.cmd.EndSample("Downsample");
@@ -175,15 +177,15 @@ namespace YPipeline
                         TextureHandle lastDst = data.bloomPyramidDownTextures[data.iterationCount - 1];
                         for (int i = data.iterationCount - 2; i >= 0; i--)
                         {
+                            // TODO：改为 Bloom 内部维持一个 MaterialPropertyBlock
                             context.cmd.SetGlobalTexture(YPipelineShaderIDs.k_BloomLowerTextureID, lastDst);
-                            if (i == 0) BlitHelper.BlitGlobalTexture(context.cmd, data.bloomPyramidDownTextures[i], data.bloomTexture, data.material, upsamplePass);
-                            else BlitHelper.BlitGlobalTexture(context.cmd, data.bloomPyramidDownTextures[i], data.bloomPyramidUpTextures[i], data.material, upsamplePass);
+                            if (i == 0) BlitHelper.BlitTexture(context.cmd, data.bloomPyramidDownTextures[i], data.bloomTexture, data.material, upsamplePass);
+                            else BlitHelper.BlitTexture(context.cmd, data.bloomPyramidDownTextures[i], data.bloomPyramidUpTextures[i], data.material, upsamplePass);
                             lastDst = data.bloomPyramidUpTextures[i];
                         }
                         context.cmd.EndSample("Upsample");
                     }
                 });
-
             }
         }
     }
