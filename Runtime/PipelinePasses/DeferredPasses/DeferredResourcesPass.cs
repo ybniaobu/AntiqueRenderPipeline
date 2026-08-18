@@ -113,7 +113,7 @@ namespace YPipeline
                 // GBuffer0 -- RGBA8_SRGB: albedo, AO (注意 alpha 是线性的）
                 // GBuffer1 -- RGBA8_UNORM: normal, roughness (跟 Forward 统一，并且 SSSR 可以少采样一个纹理）
                 // GBuffer2 -- RGBA8_UNORM: reflectance, metallic, material ID (alpha）
-                // GBuffer3 -- R11G11B10_FLOAT: emission
+                // GBuffer3 -- RGBA8_UNORM: custom parameters based on project requirements
                 // ----------------------------------------------------------------------------------------------------
                 
                 TextureDesc gBuffer0Desc = new TextureDesc(bufferSize.x, bufferSize.y)
@@ -142,8 +142,8 @@ namespace YPipeline
                 
                 TextureDesc gBuffer3Desc = new TextureDesc(bufferSize.x, bufferSize.y)
                 {
-                    format = GraphicsFormat.B10G11R11_UFloatPack32,
-                    filterMode = FilterMode.Bilinear,
+                    format = GraphicsFormat.R8G8B8A8_UNorm,
+                    filterMode = FilterMode.Point,
                     clearBuffer = true,
                     name = "GBuffer3"
                 };

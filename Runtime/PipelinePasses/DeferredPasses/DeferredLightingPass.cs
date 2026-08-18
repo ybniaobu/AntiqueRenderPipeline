@@ -10,6 +10,8 @@ namespace YPipeline
         private class DeferredLightingPassData
         {
             public Material material;
+            
+            public RendererListHandle hybridRendererList;
         }
 
         private Material m_DeferredLightingMaterial;
@@ -49,12 +51,30 @@ namespace YPipeline
                 builder.UseBuffer(data.TileReflectionProbeIndicesBufferHandle, AccessFlags.Read);
                 
                 builder.SetRenderAttachment(data.CameraColorAttachment, 0, AccessFlags.Write);
+                builder.SetRenderAttachmentDepth(data.CameraDepthAttachment, AccessFlags.Read);
+                
+                // forward in deferred
+                RendererListDesc hybridRendererListDesc = new RendererListDesc(YPipelineShaderTagIDs.k_HybridShaderTagId, data.cullingResults, data.camera)
+                {
+                    rendererConfiguration = PerObjectData.None,
+                    renderQueueRange = new RenderQueueRange(2000, 2499), // 包括 Opaque 和 AlphaTest
+                    sortingCriteria = SortingCriteria.CommonOpaque
+                };
+                
+                passData.hybridRendererList = data.renderGraph.CreateRendererList(hybridRendererListDesc);
+                builder.UseRendererList(passData.hybridRendererList);
                 
                 builder.AllowPassCulling(false);
 
                 builder.SetRenderFunc(static (DeferredLightingPassData data, RasterGraphContext context) =>
                 {
+                    context.cmd.BeginSample("Deferred Lighting");
                     context.cmd.DrawProcedural(Matrix4x4.identity, data.material, 0, MeshTopology.Triangles, 3);
+                    context.cmd.EndSample("Deferred Lighting");
+                    
+                    context.cmd.BeginSample("Forward in Deferred");
+                    context.cmd.DrawRendererList(data.hybridRendererList);
+                    context.cmd.EndSample("Forward in Deferred");
                 });
             }
         }

@@ -9,7 +9,7 @@
 #pragma multi_compile _ _DEFERRED_RENDERING
 
 #include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
-#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+#include "../../ShaderLibrary/Utilities/EncodingLib.hlsl"
 #include "DenoiseLibrary.hlsl"
 #include "UpsampleLibrary.hlsl"
 

@@ -7,12 +7,10 @@
 //
 // YPipeline.MaterialID:  static fields
 //
-#define MATERIALID_UNLIT (0)
-#define MATERIALID_STANDARD_PBR (1)
-#define MATERIALID_ANISOTROPIC (2)
+#define MATERIALID_STANDARD_PBR (0)
+#define MATERIALID_ADVANCED_PBR (1)
+#define MATERIALID_CLOTH (2)
 #define MATERIALID_SUBSURFACE_SCATTERING (3)
-#define MATERIALID_CLOTH (4)
-#define MATERIALID_CLEAR_COAT (5)
 
 
 #endif

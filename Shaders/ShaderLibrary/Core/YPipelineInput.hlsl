@@ -46,6 +46,15 @@ SAMPLER(sampler_PointClamp);
 SAMPLER(sampler_LinearRepeat);
 
 // ----------------------------------------------------------------------------------------------------
+// Global Illumination Fallback
+// ----------------------------------------------------------------------------------------------------
+
+float4 _AmbientProbe[7]; // YPipeline 上传的全局 Ambient Probe 球谐数据
+TEXTURECUBE(_GlobalReflectionProbe); // YPipeline 上传的全局 Reflection Probe 数据
+SAMPLER(sampler_GlobalReflectionProbe);
+float4 _GlobalReflectionProbe_HDR;
+
+// ----------------------------------------------------------------------------------------------------
 // Camera / Time Related Data
 // ----------------------------------------------------------------------------------------------------
 

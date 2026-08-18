@@ -8,6 +8,7 @@ namespace YPipeline
         public static ShaderTagId k_SRPDefaultShaderTagId = new ShaderTagId("SRPDefaultUnlit");
         
         public static ShaderTagId k_GBufferShaderTagId = new ShaderTagId("YPipelineGBuffer");
+        public static ShaderTagId k_HybridShaderTagId = new ShaderTagId("YPipelineHybrid"); // Forward in Deferred
         public static ShaderTagId k_ForwardShaderTagId = new ShaderTagId("YPipelineForward");
         public static ShaderTagId k_TransparencyShaderTagId = new ShaderTagId("YPipelineTransparency");
         

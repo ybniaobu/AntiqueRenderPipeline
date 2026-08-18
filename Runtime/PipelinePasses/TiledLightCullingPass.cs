@@ -42,6 +42,9 @@ namespace YPipeline
                 passData.lightData = data.lightData;
                 passData.cs = data.runtimeResources.TiledLightCullingCS;
                 
+                LocalKeyword splitDepth = new LocalKeyword(passData.cs, YPipelineKeywords.k_TileCullingSplitDepth);
+                passData.cs.SetKeyword(splitDepth, data.lightData.isSplitDepthEnabled);
+                
                 // Input Infos
                 passData.lightCullingInputInfos = builder.CreateTransientBuffer(new BufferDesc()
                 {
@@ -91,9 +94,6 @@ namespace YPipeline
                 builder.SetRenderFunc(static (TiledLightCullingPassData data, ComputeGraphContext context) =>
                 {
                     YPipelineLightData lightData = data.lightData;
-                    
-                    // LocalKeyword splitDepth = new LocalKeyword(data.cs, YPipelineKeywords.k_TileCullingSplitDepth);
-                    CoreUtils.SetKeyword(data.cs, YPipelineKeywords.k_TileCullingSplitDepth, lightData.isSplitDepthEnabled);
                     
                     int kernel = data.cs.FindKernel("TiledLightCulling");
                     context.cmd.SetBufferData(data.lightCullingInputInfos, lightData.lightCullingInputInfos, 0, 0, lightData.punctualLightCount);

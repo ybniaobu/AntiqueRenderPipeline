@@ -30,11 +30,11 @@ namespace YPipeline
         [NonSerialized] internal YPipelinePerCameraData perCameraData = new YPipelinePerCameraData();
 
 #if UNITY_EDITOR
-        public void OnDisable()
-        {
-            perCameraData?.Dispose();
-            perCameraData = null;
-        }
+        // public void OnDisable()
+        // {
+        //     perCameraData?.Dispose();
+        //     perCameraData = null;
+        // }
 #endif
 
         public void OnDestroy()

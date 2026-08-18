@@ -10,8 +10,8 @@ The following rendering features are not yet supported compared to URP: Super Re
 |:------------------|:-----------------------------------|:-------------------------------------------------------------------------------|
 | Render Path       | Forward/Deferred                   |                                                                                |
 | Material          | PBR                                |                                                                                |
-|                   | ▲ Clear Coat                       |                                                                                |
-|                   | ▲ Anisotropic                      |                                                                                |
+|                   | Clear Coat                         |                                                                                |
+|                   | Anisotropic                        |                                                                                |
 |                   | ▲ SSSSS                            | screen space subsurface scattering                                             |
 |                   | ▲ Cloth                            |                                                                                |
 | Direct lighting   | Directional Light                  | only support one directional light, shadow atlas with 4 cascades               |
@@ -30,3 +30,7 @@ The following rendering features are not yet supported compared to URP: Super Re
 |                   | Tone Mapping                       | Reinhard, Khronos PBR Neutral, ACES                                            |
 |                   | Color Grading                      |                                                                                |
 |                   | ▲ Depth of field (DoF)             |                                                                                |
+
+# DCC Integration
+
+- **Substance 3D Painter** — Viewport shaders (`ARP_StandardPBR` / `ARP_AdvancedPBR` / `ARP_ClearCoat`) that replicate the Standard PBR, Advanced PBR and Clear Coat shading models, so materials can be previewed in Painter with the same BRDF. See [Documentation~/SubstancePainter/README.md](Documentation~/SubstancePainter/README.md).

@@ -12,7 +12,7 @@ namespace YPipeline
         public int version => m_Version;
         
         bool IRenderPipelineGraphicsSettings.isAvailableInPlayerBuild =>
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+#if UNITY_ASSERTIONS || UNITY_EDITOR
             true;
 #else
             false;

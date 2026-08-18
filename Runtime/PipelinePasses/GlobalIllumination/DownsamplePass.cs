@@ -58,6 +58,12 @@ namespace YPipeline
                 passData.cs = data.runtimeResources.DownsampleCS;
                 passData.temporalDenoiseEnabled = temporalDenoiseEnabled;
                 passData.ssgiEnabled = ssgiEnabled;
+                
+                LocalKeyword motionVectorKeyword = new LocalKeyword(passData.cs, "_OUTPUT_MOTION_VECTOR");
+                LocalKeyword sceneHistoryKeyword = new LocalKeyword(passData.cs, "_OUTPUT_SCENE_HISTORY");
+                passData.cs.SetKeyword(motionVectorKeyword, temporalDenoiseEnabled);
+                passData.cs.SetKeyword(sceneHistoryKeyword, ssgiEnabled);
+                
                 Vector2Int textureSize = data.BufferSize / 2;
                 passData.threadGroupSizes = new Vector2Int(Mathf.CeilToInt(textureSize.x / 8.0f), Mathf.CeilToInt(textureSize.y / 8.0f));
                 passData.textureSize = new Vector4(1f / textureSize.x, 1f / textureSize.y, textureSize.x, textureSize.y);
@@ -133,15 +139,9 @@ namespace YPipeline
                 }
                 
                 builder.AllowPassCulling(false);
-                builder.AllowGlobalStateModification(true);
                 
                 builder.SetRenderFunc(static (DownsamplePassData data, ComputeGraphContext context) =>
                 {
-                    LocalKeyword motionVectorKeyword = new LocalKeyword(data.cs, "_OUTPUT_MOTION_VECTOR");
-                    LocalKeyword sceneHistoryKeyword = new LocalKeyword(data.cs, "_OUTPUT_SCENE_HISTORY");
-                    
-                    context.cmd.SetKeyword(data.cs, motionVectorKeyword, data.temporalDenoiseEnabled);
-                    context.cmd.SetKeyword(data.cs, sceneHistoryKeyword, data.ssgiEnabled);
                     context.cmd.SetComputeVectorParam(data.cs, "_TextureSize", data.textureSize);
                     
                     int downsampleKernel = data.cs.FindKernel("DownsampleKernel");

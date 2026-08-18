@@ -39,7 +39,7 @@ namespace YPipeline
                 {
                     rendererConfiguration = PerObjectData.ReflectionProbes | PerObjectData.LightProbe,
                     renderQueueRange = new RenderQueueRange(2000, 2449),
-                    sortingCriteria = SortingCriteria.OptimizeStateChanges,
+                    sortingCriteria = SortingCriteria.CommonOpaque,
                     stateBlock = stateBlock
                 };
                 
@@ -47,7 +47,7 @@ namespace YPipeline
                 {
                     rendererConfiguration = PerObjectData.ReflectionProbes | PerObjectData.LightProbe,
                     renderQueueRange = new RenderQueueRange(2450, 2499),
-                    sortingCriteria = SortingCriteria.OptimizeStateChanges,
+                    sortingCriteria = SortingCriteria.CommonOpaque,
                     stateBlock = stateBlock
                 };
                 

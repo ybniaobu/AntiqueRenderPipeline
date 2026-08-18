@@ -107,8 +107,8 @@ CBUFFER_END
 // Textures and Samplers
 // ----------------------------------------------------------------------------------------------------
 
-TEXTURE2D(unity_Lightmap);
-SAMPLER(samplerunity_Lightmap);
+// TEXTURE2D(unity_Lightmap);
+// SAMPLER(samplerunity_Lightmap);
 
 // TEXTURE2D(unity_ShadowMask);
 // SAMPLER(samplerunity_ShadowMask);
@@ -123,6 +123,14 @@ SAMPLER(samplerunity_SpecCube0);
 inline uint GetRenderingLayer()
 {
     return asuint(unity_RenderingLayer.x);
+}
+
+inline void LODFadeCrossFade(float2 pixelCoord)
+{
+    float dither = InterleavedGradientNoise(pixelCoord, 0);
+    float isNextLodLevel = step(unity_LODFade.x, 0);
+    dither = lerp(-dither, dither, isNextLodLevel);
+    clip(unity_LODFade.x + dither);
 }
 
 #endif

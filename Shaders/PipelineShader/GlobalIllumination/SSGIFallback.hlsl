@@ -1,8 +1,13 @@
 ﻿#ifndef YPIPELINE_SSGI_FALLBACK_INCLUDED
 #define YPIPELINE_SSGI_FALLBACK_INCLUDED
 
-#include "../../ShaderLibrary/IBLLibrary.hlsl"
-// #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/AmbientProbe.hlsl" // IBLLibrary 改写了 EvaluateAmbientProbe 函数
+float4 _AmbientProbe[7]; // YPipeline 上传的全局 Ambient Probe 球谐数据
+TEXTURECUBE(_GlobalReflectionProbe); // YPipeline 上传的全局 Reflection Probe 数据
+SAMPLER(sampler_GlobalReflectionProbe);
+float4 _GlobalReflectionProbe_HDR;
+
+#include "../../ShaderLibrary/PBR/ImageBasedLightingLib.hlsl"
+// #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/AmbientProbe.hlsl" // ImageBasedLightingLib 改写了 EvaluateAmbientProbe 函数
 #define __AMBIENTPROBE_HLSL__
 #include "Packages/com.unity.render-pipelines.core/Runtime/Lighting/ProbeVolume/ProbeVolume.hlsl"
 
