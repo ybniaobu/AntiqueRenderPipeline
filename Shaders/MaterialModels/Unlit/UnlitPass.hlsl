@@ -29,6 +29,12 @@ float4 UnlitOpaqueFrag(Varyings IN) : SV_Target
     return float4(albedo.rgb + emission, 1.0);
 }
 
+float4 UnlitHybridFrag(Varyings IN) : SV_Target
+{
+    float4 albedo = SAMPLE_TEXTURE2D(_BaseTex, sampler_BaseTex, IN.uv).rgba * _BaseColor;
+    return float4(albedo.rgb, 1.0);
+}
+
 float4 UnlitTransparencyFrag(Varyings IN) : SV_Target
 {
     float3 emission = SAMPLE_TEXTURE2D(_EmissionTex, sampler_EmissionTex, IN.uv).rgb * _EmissionColor.rgb;
@@ -39,10 +45,7 @@ float4 UnlitTransparencyFrag(Varyings IN) : SV_Target
     #endif
 
     #if defined(LOD_FADE_CROSSFADE)
-        float dither = InterleavedGradientNoise(IN.positionHCS.xy, 0);
-        float isNextLodLevel = step(unity_LODFade.x, 0);
-        dither = lerp(-dither, dither, isNextLodLevel);
-        clip(unity_LODFade.x + dither);
+        LODFadeCrossFade(IN.positionHCS.xy);
     #endif
 
     return float4(albedo.rgb + emission, albedo.a);

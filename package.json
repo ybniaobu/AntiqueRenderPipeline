@@ -1,14 +1,14 @@
 {
   "name": "com.ystudio.render-pipeline.antique",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "Antique Render Pipeline",
   "description": "A custom scriptable rendering pipeline(SRP), made by ystudio",
-  "unity": "6000.5",
+  "unity": "6000.6",
   "changelogUrl": "https://github.com/ybniaobu/AntiqueRenderPipeline/blob/main/CHANGELOG.md",
   "documentationUrl": "https://github.com/ybniaobu/AntiqueRenderPipeline/blob/main/README.md",
   "licensesUrl": "https://github.com/ybniaobu/AntiqueRenderPipeline/blob/main/LICENSE.txt",
   "dependencies": {
-    "com.unity.render-pipelines.core": "17.5.0"
+    "com.unity.render-pipelines.core": "17.6.0"
   },
   "keywords": [
     "graphics",

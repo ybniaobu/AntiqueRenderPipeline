@@ -243,7 +243,7 @@ namespace YPipeline
             if (sunLightCount == 0)
             {
                 lightData.sunLightColor = Vector4.zero;
-                lightData.sunLightDirection = Vector4.zero;
+                lightData.sunLightDirection = new Vector4(0, -1, 0, 0); // Use a fallback direction when there is no sun light to avoid NaN from normalize(0) in the shader
             }
         }
         
@@ -251,7 +251,7 @@ namespace YPipeline
         {
             YPipelineLightData lightData = data.lightData;
             
-            SphericalHarmonicsL2 SH = RenderSettings.ambientProbe;
+            SphericalHarmonicsL2 SH = RenderSettings.ambientProbe; // ambient intensity already included
             float intensity = Mathf.GammaToLinearSpace(RenderSettings.ambientIntensity);
             SHUtils.PackSHCoefficientsTo7Vectors(SH, ref lightData.ambientProbe, intensity);
             

@@ -31,10 +31,11 @@ namespace YPipeline
                 builder.UseRendererList(passData.rendererList);
                 
                 builder.SetRenderAttachmentDepth(data.CameraDepthAttachment, AccessFlags.Read);
-                builder.SetRenderAttachment(data.GBuffer0, 0, AccessFlags.Write);
-                builder.SetRenderAttachment(data.GBuffer1, 1, AccessFlags.Write);
-                builder.SetRenderAttachment(data.GBuffer2, 2, AccessFlags.Write);
-                builder.SetRenderAttachment(data.GBuffer3, 3, AccessFlags.Write);
+                builder.SetRenderAttachment(data.CameraColorAttachment, 0, AccessFlags.Write);
+                builder.SetRenderAttachment(data.GBuffer0, 1, AccessFlags.Write);
+                builder.SetRenderAttachment(data.GBuffer1, 2, AccessFlags.Write);
+                builder.SetRenderAttachment(data.GBuffer2, 3, AccessFlags.Write);
+                builder.SetRenderAttachment(data.GBuffer3, 4, AccessFlags.Write);
                 
                 builder.SetGlobalTextureAfterPass(data.GBuffer0, YPipelineShaderIDs.k_GBuffer0ID);
                 builder.SetGlobalTextureAfterPass(data.GBuffer1, YPipelineShaderIDs.k_GBuffer1ID);

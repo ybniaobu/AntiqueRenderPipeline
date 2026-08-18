@@ -8,8 +8,8 @@
 #pragma multi_compile _ _DEFERRED_RENDERING
 
 #include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
-#include "../../ShaderLibrary/RandomLibrary.hlsl"
-#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+#include "../../ShaderLibrary/Utilities/RandomLib.hlsl"
+#include "../../ShaderLibrary/Utilities/EncodingLib.hlsl"
 
 // --- Textures & Samplers ---
 RWTexture2D<float2> _OutputTexture;

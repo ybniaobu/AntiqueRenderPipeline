@@ -7,11 +7,8 @@ CBUFFER_START(UnityPerMaterial)
     float4 _EmissionColor;
     float _Specular;
     float _Roughness;
-    float _RoughnessScale;
     float _Metallic;
-    float _MetallicScale;
     float _NormalIntensity;
-    float _AOScale;
     float _Cutoff;
 CBUFFER_END
 

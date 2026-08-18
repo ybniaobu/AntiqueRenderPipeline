@@ -2,29 +2,28 @@ Shader "YPipeline/Shading Models/Unlit"
 {
     Properties
     {
-        [Header(Base Color Settings)] [Space(8)]
         [MainColor] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         [MainTexture] _BaseTex("Albedo Texture", 2D) = "white" {}
         
-        [Header(Transparency Settings)] [Space(8)]
-        [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
-        [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
-    	[Enum(UnityEngine.Rendering.BlendOp)] _BlendOp ("Blend Operation", Float) = 0
-        [Enum(Off, 0, On, 1)] _ZWrite ("Z Write", Float) = 1
-    	[Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("Z Test", Float) = 4
-        [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
-        _Cutoff("Alpha CutOff", Range(0.0, 1.0)) = 0.5
-    	// [Enum(Off, 0, On, 1)] _AlphaToCoverage ("Alpha To Coverage", Float) = 0
-        
-        [Header(Emission Settings)] [Space(8)]
         [HDR] _EmissionColor("Emission Color", Color) = (0.0, 0.0, 0.0, 1.0)
         [NoScaleOffset] _EmissionTex("Emission Texture", 2D) = "white" {}
         
-        [Header(Other Settings)] [Space(8)]
+    	[Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+        _Cutoff("Alpha CutOff", Range(0.0, 1.0)) = 0.5
+    	
+        [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
+        [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
+    	[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlendAlpha ("Src Blend Alpha", Float) = 1
+		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlendAlpha ("Dst Blend Alpha", Float) = 0
+    	[Enum(UnityEngine.Rendering.BlendOp)] _BlendOp ("Blend Operation", Float) = 0
+    	// [Enum(Off, 0, On, 1)] _AlphaToCoverage ("Alpha To Coverage", Float) = 0
+    	
+        [Enum(Off, 0, On, 1)] _ZWrite ("Z Write", Float) = 1
+    	[Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("Z Test", Float) = 4
+        
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Float) = 2
     	
     	[HideInInspector] _AddPrecomputedVelocity("_AddPrecomputedVelocity", Float) = 0.0
-    	[HideInInspector] _MaterialID ("Material ID", Float) = 0 // See YPipeline.MaterialID, 0 is unlit.
     }
     
     SubShader
@@ -32,6 +31,7 @@ Shader "YPipeline/Shading Models/Unlit"
         Pass
         {
         	Name "Unlit Opaque"
+        	
             Tags { "LightMode" = "YPipelineForward" }
 	        
             ZWrite Off
@@ -53,9 +53,10 @@ Shader "YPipeline/Shading Models/Unlit"
         Pass
         {
         	Name "Unlit Transparency"
+        	
             Tags { "LightMode" = "YPipelineTransparency" }
             
-            Blend [_SrcBlend] [_DstBlend]
+            Blend [_SrcBlend] [_DstBlend], [_SrcBlendAlpha][_DstBlendAlpha]
             BlendOp [_BlendOp]
             ZWrite [_ZWrite]
             ZTest [_ZTest]
@@ -77,9 +78,71 @@ Shader "YPipeline/Shading Models/Unlit"
             ENDHLSL
         }
 
+	    Pass
+        {
+            Name "GBuffer"
+            
+            Tags { "LightMode" = "YPipelineGBuffer" }
+            
+            ZWrite Off
+            ZTest Equal // 使用 depth prepass
+            Cull [_Cull]
+            
+            Stencil
+            {
+                WriteMask 2 // YStencilUsage.Hybrid
+                Ref 2 // YStencilUsage.Hybrid
+                Comp Always
+                Pass Replace
+            }
+            
+            HLSLPROGRAM
+            #pragma target 4.5
+            
+            #pragma vertex GBufferVert
+            #pragma fragment GBufferFrag
+
+            #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
+			#include "UnlitInput.hlsl"
+            #include "UnlitGBufferPass.hlsl"
+            ENDHLSL
+        }
+
+	    Pass
+        {
+        	Name "Unlit Hybrid"
+        	
+            Tags { "LightMode" = "YPipelineHybrid" }
+	        
+            Blend One One // emission additive
+            ZWrite Off
+            ZTest Equal
+            Cull [_Cull]
+            
+	        Stencil
+            {
+                ReadMask 2 // YStencilUsage.Hybrid
+                Ref 2 // YStencilUsage.Hybrid
+                Comp Equal
+                Pass Zero
+            }
+            
+            HLSLPROGRAM
+            #pragma target 4.5
+            
+            #pragma vertex UnlitVert
+            #pragma fragment UnlitHybridFrag
+
+            #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
+			#include "UnlitInput.hlsl"
+            #include "UnlitPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
         	Name "ShadowCaster"
+        	
 			Tags { "LightMode" = "ShadowCaster" }
 
 			ColorMask 0
@@ -97,13 +160,14 @@ Shader "YPipeline/Shading Models/Unlit"
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "UnlitInput.hlsl"
-			#include "../ShadowCasterCommon.hlsl"
+			#include "../SharedShadowCasterPass.hlsl"
 			ENDHLSL
 		}
 
 		Pass
 		{
 			Name "Depth"
+			
 			Tags { "LightMode" = "Depth" }
 			
 			ZWrite On
@@ -122,7 +186,7 @@ Shader "YPipeline/Shading Models/Unlit"
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "UnlitInput.hlsl"
-			#include "../DepthPrePassCommon.hlsl"
+			#include "../SharedDepthPrePass.hlsl"
 			ENDHLSL
 		}
 
@@ -154,6 +218,7 @@ Shader "YPipeline/Shading Models/Unlit"
         Pass
         {
         	Name "Meta"
+        	
 			Tags { "LightMode" = "Meta" }
 
 			Cull Off
@@ -173,6 +238,7 @@ Shader "YPipeline/Shading Models/Unlit"
 		Pass
 		{
 			Name "MotionVectors"
+			
             Tags { "LightMode" = "MotionVectors" }
             
             ZWrite Off
@@ -182,8 +248,8 @@ Shader "YPipeline/Shading Models/Unlit"
             
             Stencil
             {
-                WriteMask 1
-                Ref 1
+                WriteMask 128 // YStencilUsage.MotionVector
+                Ref 128 // YStencilUsage.MotionVector
                 Comp Always
                 Pass Replace
             }
@@ -201,7 +267,7 @@ Shader "YPipeline/Shading Models/Unlit"
 
             #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "UnlitInput.hlsl"
-			#include "../MotionVectorCommon.hlsl"
+			#include "../SharedMotionVectorPass.hlsl"
             ENDHLSL
 		}
     }

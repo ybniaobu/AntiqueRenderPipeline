@@ -1,7 +1,7 @@
 ﻿#ifndef YPIPELINE_UNLIT_THIN_GBUFFER_PASS_INCLUDED
 #define YPIPELINE_UNLIT_THIN_GBUFFER_PASS_INCLUDED
 
-#include "../../ShaderLibrary/EncodingLibrary.hlsl"
+#include "../../ShaderLibrary/Utilities/EncodingLib.hlsl"
 
 struct Attributes
 {
@@ -39,10 +39,7 @@ float4 ThinGBufferUnlitFrag(Varyings IN, out float depth: SV_DEPTH) : SV_TARGET
     #endif
         
     #if defined(LOD_FADE_CROSSFADE)
-        float dither = InterleavedGradientNoise(IN.positionHCS.xy, 0);
-        float isNextLodLevel = step(unity_LODFade.x, 0);
-        dither = lerp(-dither, dither, isNextLodLevel);
-        clip(unity_LODFade.x + dither);
+        LODFadeCrossFade(IN.positionHCS.xy);
     #endif
     
     float3 N = normalize(IN.normalWS);

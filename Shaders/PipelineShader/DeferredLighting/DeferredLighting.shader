@@ -11,9 +11,18 @@
         {
             Name "Deferred Lighting"
             
+            Blend One One
             ZTest Always
             ZWrite Off
             Cull Off
+            
+            Stencil
+            {
+                ReadMask 1 // YStencilUsage.StandardPBR
+                Ref 1 // YStencilUsage.StandardPBR
+                Comp Equal
+                Pass Zero
+            }
             
             HLSLPROGRAM
             #pragma target 4.5

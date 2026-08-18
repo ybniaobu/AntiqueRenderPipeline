@@ -38,7 +38,7 @@ float3 DepthNormalAwareBilateralUpsample_Uniform(float2 depthThreshold, float fu
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
     float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
-    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
+    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights < HALF_MIN));
 }
 
 // Uniform weight, single channel version (don't consider bilinear weight)
@@ -55,7 +55,7 @@ float DepthNormalAwareBilateralUpsample_Uniform(float2 depthThreshold, float ful
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);
     float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
-    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights < HALF_MIN));
 }
 
 // Bilinear weight, color3 version
@@ -73,7 +73,7 @@ float3 DepthNormalAwareBilateralUpsample(float2 depthThreshold, float fullDepth,
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float3 weightedColorSum = color01 * weights.x + color11 * weights.y + color10 * weights.z + color00 * weights.w;
     float3 fallBackColor = (color01 + color11 + color10 + color00) * 0.25;
-    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights == 0));
+    return lerp(weightedColorSum / weightSum, fallBackColor, all(weights < HALF_MIN));
 }
 
 // Bilinear weight, single channel version
@@ -91,7 +91,7 @@ float DepthNormalAwareBilateralUpsample(float2 depthThreshold, float fullDepth, 
     float weightSum = weights.x + weights.y + weights.z + weights.w + HALF_MIN;
     float weightedValueSum = dot(values, weights);
     float fallBackValue = (values.x + values.y + values.z + values.w) * 0.25;
-    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights == 0));
+    return lerp(weightedValueSum / weightSum, fallBackValue, all(weights < HALF_MIN));
 }
 
 // ----------------------------------------------------------------------------------------------------
