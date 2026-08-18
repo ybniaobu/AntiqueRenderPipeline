@@ -39,10 +39,7 @@ float4 UnlitTransparencyFrag(Varyings IN) : SV_Target
     #endif
 
     #if defined(LOD_FADE_CROSSFADE)
-        float dither = InterleavedGradientNoise(IN.positionHCS.xy, 0);
-        float isNextLodLevel = step(unity_LODFade.x, 0);
-        dither = lerp(-dither, dither, isNextLodLevel);
-        clip(unity_LODFade.x + dither);
+        LODFadeCrossFade(IN.positionHCS.xy);
     #endif
 
     return float4(albedo.rgb + emission, albedo.a);

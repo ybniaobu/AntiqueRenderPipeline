@@ -15,23 +15,43 @@ namespace YPipeline
 
         private void SetSupportedRenderingFeatures()
         {
+            // Pipeline
+            SupportedRenderingFeatures.active.editableMaterialRenderQueue = true;
             // SupportedRenderingFeatures.active.rendersUIOverlay = true;
+            SupportedRenderingFeatures.active.lightProbeProxyVolumes = false;
+            
+            // Quality Settings
             SupportedRenderingFeatures.active.overridesRealtimeReflectionProbes = true;
             SupportedRenderingFeatures.active.overridesShadowmask = true;
-            
-            SupportedRenderingFeatures.active.reflectionProbeModes = SupportedRenderingFeatures.ReflectionProbeModes.Rotation;
+            SupportedRenderingFeatures.active.overridesLODBias = false;
+            SupportedRenderingFeatures.active.overridesMaximumLODLevel = false;
+            SupportedRenderingFeatures.active.overridesEnableLODCrossFade = false;
 
+            // Window -> Rendering -> Lighting
             SupportedRenderingFeatures.active.enlighten = false;
             SupportedRenderingFeatures.active.mixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeModes.IndirectOnly;
             SupportedRenderingFeatures.active.defaultMixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeModes.IndirectOnly;
-            SupportedRenderingFeatures.active.lightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime;
             SupportedRenderingFeatures.active.lightmapsModes = LightmapsMode.NonDirectional;
             SupportedRenderingFeatures.active.overridesFog = true;
+            SupportedRenderingFeatures.active.overridesEnvironmentLighting = false;
             SupportedRenderingFeatures.active.overridesOtherLightingSettings = true;
             
+            // APV
+            SupportedRenderingFeatures.active.skyOcclusion = true;
+            
+            // Light Component
+            SupportedRenderingFeatures.active.lightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime;
+            
+            // Reflection Probe Component
+            SupportedRenderingFeatures.active.reflectionProbes = true;
+            SupportedRenderingFeatures.active.reflectionProbeModes = SupportedRenderingFeatures.ReflectionProbeModes.Rotation;
+            SupportedRenderingFeatures.active.reflectionProbesBlendDistance = true;
+            
+            // Mesh Renderer Component
             SupportedRenderingFeatures.active.receiveShadows = false;
             SupportedRenderingFeatures.active.rendererProbes = false;
-            SupportedRenderingFeatures.active.lightProbeProxyVolumes = false;
+            SupportedRenderingFeatures.active.motionVectors = true;
+            SupportedRenderingFeatures.active.rendererPriority = false;
         }
         
         // ----------------------------------------------------------------------------------------------------
@@ -50,21 +70,21 @@ namespace YPipeline
                     case LightType.Directional:
                         DirectionalLight directionalLight = new DirectionalLight();
                         LightmapperUtils.Extract(light, ref directionalLight);
-                        directionalLight.color.intensity /= Mathf.PI;
+                        // directionalLight.color.intensity /= Mathf.PI;
                         // directionalLight.indirectColor.intensity /= Mathf.PI;
                         lightData.Init(ref directionalLight);
                         break;
                     case LightType.Point:
                         PointLight pointLight = new PointLight();
                         LightmapperUtils.Extract(light, ref pointLight);
-                        pointLight.color.intensity /= Mathf.PI;
+                        // pointLight.color.intensity /= Mathf.PI;
                         // pointLight.indirectColor.intensity /= Mathf.PI;
                         lightData.Init(ref pointLight);
                         break;
                     case LightType.Spot:
                         SpotLight spotLight = new SpotLight();
                         LightmapperUtils.Extract(light, ref spotLight);
-                        spotLight.color.intensity /= Mathf.PI;
+                        // spotLight.color.intensity /= Mathf.PI;
                         // spotLight.indirectColor.intensity /= Mathf.PI;
                         spotLight.innerConeAngle = light.innerSpotAngle * Mathf.Deg2Rad;
                         spotLight.angularFalloff = AngularFalloffType.AnalyticAndInnerAngle;
@@ -73,7 +93,7 @@ namespace YPipeline
                     case LightType.Rectangle:
                         RectangleLight rectangleLight = new RectangleLight();
                         LightmapperUtils.Extract(light, ref rectangleLight);
-                        rectangleLight.color.intensity /= Mathf.PI;
+                        // rectangleLight.color.intensity /= Mathf.PI;
                         // rectangleLight.indirectColor.intensity /= Mathf.PI;
                         rectangleLight.mode = LightMode.Baked;
                         lightData.Init(ref rectangleLight);
@@ -81,7 +101,7 @@ namespace YPipeline
                     case LightType.Disc:
                         DiscLight discLight = new DiscLight();
                         LightmapperUtils.Extract(light, ref discLight);
-                        discLight.color.intensity /= Mathf.PI;
+                        // discLight.color.intensity /= Mathf.PI;
                         // discLight.indirectColor.intensity /= Mathf.PI;
                         discLight.mode = LightMode.Baked;
                         lightData.Init(ref discLight);

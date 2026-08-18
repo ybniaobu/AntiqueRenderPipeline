@@ -63,7 +63,7 @@ namespace YPipeline
         public TextureHandle GBuffer0 { set; get; } // RGBA8_SRGB: albedo, AO
         public TextureHandle GBuffer1 { set; get; } // RGBA8_UNORM: normal, roughness
         public TextureHandle GBuffer2 { set; get; } // RGBA8_UNORM: reflectance, metallic, material ID (alpha）
-        public TextureHandle GBuffer3 { set; get; } // R11G11B10_FLOAT: emission
+        public TextureHandle GBuffer3 { set; get; } // RGBA8_UNORM: custom parameters based on project requirements
         public TextureHandle ThinGBuffer { set; get; } // RGBA8_UNORM: normal, roughness
         public TextureHandle MotionVectorTexture { set; get; }
         public TextureHandle HalfDepthTexture { set; get; }

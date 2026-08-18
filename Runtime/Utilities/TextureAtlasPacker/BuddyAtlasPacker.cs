@@ -175,7 +175,7 @@ namespace YPipeline
                 int size = Mathf.RoundToInt(squareParams[i].z);
                 if (!Allocate(size, out Vector2Int position))
                 {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || UNITY_ASSERTIONS
                     Debug.LogWarning($"BuddyAtlasPacker: Failed to allocate square {i} with size {size}");
 #endif
                     squareParams[i].w = -1; // 标记为失败

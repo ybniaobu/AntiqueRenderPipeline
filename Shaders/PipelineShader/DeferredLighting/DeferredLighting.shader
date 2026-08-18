@@ -11,9 +11,18 @@
         {
             Name "Deferred Lighting"
             
+            Blend One One
             ZTest Always
             ZWrite Off
             Cull Off
+            
+            Stencil
+            {
+                ReadMask 2
+                Ref 2
+                Comp Equal
+                Pass Zero
+            }
             
             HLSLPROGRAM
             #pragma target 4.5

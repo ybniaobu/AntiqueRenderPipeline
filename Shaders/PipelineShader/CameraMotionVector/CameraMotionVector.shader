@@ -18,7 +18,8 @@
         
         Stencil
         {
-            Ref 1
+            ReadMask 128 // YStencilUsage.MotionVector
+            Ref 128 // YStencilUsage.MotionVector
             Comp NotEqual
         }
 

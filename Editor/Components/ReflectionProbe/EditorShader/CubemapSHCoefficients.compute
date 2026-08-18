@@ -7,7 +7,7 @@
 #define SH_BASIS_COUNT 9
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-#include "../../../../Shaders/ShaderLibrary/SphericalHarmonicsLibrary.hlsl"
+#include "../../../../Shaders/ShaderLibrary/PBR/SphericalHarmonicsLib.hlsl"
 
 TextureCube<float4> _Cubemap;
 StructuredBuffer<float4> _Input;

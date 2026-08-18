@@ -3,12 +3,12 @@
 
 #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 #include "../../ShaderLibrary/Core/GBufferCommon.hlsl"
-#include "../../ShaderLibrary/RenderingEquationLibrary.hlsl"
+#include "../../ShaderLibrary/PBR/RenderingEquationLib.hlsl"
 
 Texture2D<float4> _GBuffer0; // RGBA8_SRGB: albedo, AO
 Texture2D<float4> _GBuffer1; // RGBA8_UNORM: normal, roughness
-Texture2D<float4> _GBuffer2; // RGBA8_UNORM: reflectance, metallic, material ID (alpha）
-Texture2D<float3> _GBuffer3; // R11G11B10_FLOAT: emission
+Texture2D<float4> _GBuffer2; // RGBA8_UNORM: reflectance, metallic, material ID (alpha)
+Texture2D<float4> _GBuffer3; // RGBA8_UNORM: custom parameters based on project requirements
 
 struct Varyings
 {
@@ -34,68 +34,69 @@ Varyings FullScreenVert(uint vertexID : SV_VertexID)
     return OUT;
 }
 
-void InitializeGeometryParams(Varyings IN, out GeometryParams geometryParams)
+void InitializeGeometryParams(Varyings IN, out GeometryParams geoParams)
 {
     float depth = LOAD_TEXTURE2D_LOD(_CameraDepthTexture, IN.positionHCS.xy, 0).r;
     float4 NDC = GetNDCFromUVAndDepth(IN.uv, depth);
-    geometryParams.positionWS = TransformNDCToWorld(NDC, UNITY_MATRIX_I_VP);
-    geometryParams.normalWS = 0.0; // 无需使用，在 standardPBRParams.N 里；
-    geometryParams.tangentWS = 0.0; // 无需使用
-    geometryParams.uv = IN.uv;
-    geometryParams.pixelCoord = IN.positionHCS.xy;
-    geometryParams.screenUV = IN.uv;
+    geoParams.positionWS = TransformNDCToWorld(NDC, UNITY_MATRIX_I_VP);
+    geoParams.normalWS = 0.0; // unavailable, but also unnecessary to use
+    geoParams.tangentWS = 0.0; // unavailable, but also unnecessary to use
+    geoParams.uv = IN.uv;
+    geoParams.pixelCoord = IN.positionHCS.xy;
+    geoParams.screenUV = IN.uv;
 }
 
-void InitializeStandardPBRParams(in GeometryParams geometryParams, out StandardPBRParams standardPBRParams, out uint materialID)
+void InitializeStandardMaterialParams(in GeometryParams geoParams, out StandardMaterialParams stdMatParams, out uint materialID)
 {
-    float4 gBuffer0 = LOAD_TEXTURE2D_LOD(_GBuffer0, geometryParams.pixelCoord, 0);
-    float4 gBuffer1 = LOAD_TEXTURE2D_LOD(_GBuffer1, geometryParams.pixelCoord, 0);
-    float4 gBuffer2 = LOAD_TEXTURE2D_LOD(_GBuffer2, geometryParams.pixelCoord, 0);
-    float3 gBuffer3 = LOAD_TEXTURE2D_LOD(_GBuffer3, geometryParams.pixelCoord, 0);
+    float4 gBuffer0 = LOAD_TEXTURE2D_LOD(_GBuffer0, geoParams.pixelCoord, 0);
+    float4 gBuffer1 = LOAD_TEXTURE2D_LOD(_GBuffer1, geoParams.pixelCoord, 0);
+    float4 gBuffer2 = LOAD_TEXTURE2D_LOD(_GBuffer2, geoParams.pixelCoord, 0);
+    float4 gBuffer3 = LOAD_TEXTURE2D_LOD(_GBuffer3, geoParams.pixelCoord, 0);
     materialID = UnpackMaterialID(gBuffer2.a);
     
-    standardPBRParams.albedo = gBuffer0.rgb;
-    standardPBRParams.ao = gBuffer0.a;
+    stdMatParams.albedo = gBuffer0.rgb;
+    stdMatParams.emission = 0.0;
+    stdMatParams.ao = gBuffer0.a;
     
     #if _SCREEN_SPACE_AMBIENT_OCCLUSION
-    standardPBRParams.ao = min(standardPBRParams.ao, SAMPLE_TEXTURE2D_LOD(_AmbientOcclusionTexture, sampler_PointClamp, geometryParams.screenUV, 0).r);
+    stdMatParams.ao = min(stdMatParams.ao, SAMPLE_TEXTURE2D_LOD(_AmbientOcclusionTexture, sampler_PointClamp, geoParams.screenUV, 0).r);
     #endif
     
-    standardPBRParams.alpha = 1.0;
-    standardPBRParams.N = DecodeNormalFrom888(gBuffer1.rgb);
-    standardPBRParams.roughness = gBuffer1.a;
-    standardPBRParams.metallic = gBuffer2.g;
-    standardPBRParams.F0 = lerp(gBuffer2.r * gBuffer2.r * float3(0.16, 0.16, 0.16), standardPBRParams.albedo, standardPBRParams.metallic);
-    standardPBRParams.F90 = saturate(dot(standardPBRParams.F0, 50.0 * 0.3333));
-    standardPBRParams.emission = gBuffer3;
+    stdMatParams.alpha = 1.0;
+    stdMatParams.N = DecodeNormalFrom888(gBuffer1.rgb);
+    stdMatParams.roughness = gBuffer1.a;
+    stdMatParams.alphaRoughness = gBuffer1.a * gBuffer1.a;
+    stdMatParams.metallic = gBuffer2.g;
+    stdMatParams.F0 = lerp(gBuffer2.r * gBuffer2.r * float3(0.16, 0.16, 0.16), stdMatParams.albedo, stdMatParams.metallic);
+    stdMatParams.F90 = saturate(dot(stdMatParams.F0, 50.0 * 0.3333));
     
-    standardPBRParams.V = GetWorldSpaceNormalizedViewDir(geometryParams.positionWS);
-    standardPBRParams.R = reflect(-standardPBRParams.V, standardPBRParams.N);
-    standardPBRParams.NoV = saturate(dot(standardPBRParams.N, standardPBRParams.V)) + 1e-3; //防止小黑点
+    stdMatParams.V = GetWorldSpaceNormalizedViewDir(geoParams.positionWS);
+    stdMatParams.NoV = saturate(dot(stdMatParams.N, stdMatParams.V)) + 1e-3; //防止小黑点
 }
 
 float4 DeferredLightingFrag(Varyings IN) : SV_TARGET
 {
-    GeometryParams geometryParams = (GeometryParams) 0;
-    InitializeGeometryParams(IN, geometryParams);
+    GeometryParams geoParams = (GeometryParams) 0;
+    InitializeGeometryParams(IN, geoParams);
     
     uint materialID;
-    StandardPBRParams standardPBRParams = (StandardPBRParams) 0;
-    InitializeStandardPBRParams(geometryParams, standardPBRParams, materialID);
+    StandardMaterialParams stdMatParams = (StandardMaterialParams) 0;
+    InitializeStandardMaterialParams(geoParams, stdMatParams, materialID);
     
-    RenderingEquationContent renderingEquationContent = (RenderingEquationContent) 0;
+    RenderingEquationContent content = (RenderingEquationContent) 0;
     
-    [forcecase] switch (materialID)
-    {
-        case MATERIALID_STANDARD_PBR: StandardPBRShading(geometryParams, standardPBRParams, renderingEquationContent);
-        break;
-        
-        default: StandardPBRShading(geometryParams, standardPBRParams, renderingEquationContent);
-        break;
-    }
+    // materialID is not used for now, but we can use it to implement different shading models in the future.
+    // [forcecase] switch (materialID)
+    // {
+    //     case MATERIALID_STANDARD_PBR: StandardPBRShading(geoParams, stdMatParams, content);
+    //     break;
+    //     
+    //     default: StandardPBRShading(geoParams, stdMatParams, content);
+    //     break;
+    // }
+    StandardPBRShading(geoParams, stdMatParams, content);
     
-    
-    return float4(CombineRenderingEquationContent(renderingEquationContent), 1.0);
+    return float4(CombineRenderingEquationContent(content), 1.0);
 }
 
 #endif

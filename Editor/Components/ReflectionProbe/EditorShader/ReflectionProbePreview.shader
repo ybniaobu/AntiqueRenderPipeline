@@ -102,7 +102,7 @@
             #include "../../../../Shaders/ShaderLibrary/Core/UnityMatrix.hlsl"
             #include "../../../../Shaders/ShaderLibrary/Core/YPipelineMacros.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
-            #include "../../../../Shaders/ShaderLibrary/SphericalHarmonicsLibrary.hlsl"
+            #include "../../../../Shaders/ShaderLibrary/PBR/SphericalHarmonicsLib.hlsl"
             
             struct Attributes
             {

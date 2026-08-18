@@ -2,39 +2,36 @@
 {
     Properties
     {
-        [Header(Base Color Settings)] [Space(8)]
         [MainColor] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         [MainTexture] _BaseTex("Albedo Texture", 2D) = "white" {}
         
-        [Header(Specular Color Settings)] [Space(8)]
         _Specular("Dielectrics Specular Intensity", Range(0.0, 1.0)) = 0.5
         
-        [Header(Hybrid Settings)] [Space(8)]
         _Roughness("Roughness", Range(0.0, 1.0)) = 0.5
         _Metallic("Metallic", Range(0.0, 1.0)) = 0.0
-        [Toggle(_USE_HYBRIDTEX)] _UseHybridTex("Use Hybrid Texture?", Float) = 0
-        [NoScaleOffset] _HybridTex("Hybrid Texture", 2D) = "gray" {}
+        // [Toggle(_USE_HYBRIDTEX)] _UseHybridTex("Use Hybrid Texture?", Float) = 0
+        [NoScaleOffset] _HybridTex("Hybrid Texture", 2D) = "white" {}
         _RoughnessScale("Roughness Scale", Range(-1.0, 1.0)) = 0.0
     	_MetallicScale("Metallic Scale", Range(-1.0, 1.0)) = 0.0
         _AOScale("Ambient Occlusion Scale", Range(-1.0, 1.0)) = 0.0
         
-        [Header(Normal Settings)] [Space(8)]
-        [Toggle(_USE_NORMALTEX)] _UseNormalTex("use normal texture?", Float) = 0
+        // [Toggle(_USE_NORMALTEX)] _UseNormalTex("Use Normal Texture?", Float) = 0
         [NoScaleOffset] [Normal] _NormalTex("Normal Texture", 2D) = "bump" {}
         _NormalIntensity("Normal Intensity", Float) = 1.0
-    	
-	    [Header(Emission Settings)] [Space(8)]
+        
         [HDR] _EmissionColor("Emission Color", Color) = (0.0, 0.0, 0.0, 1.0)
         [NoScaleOffset] _EmissionTex("Emission Texture", 2D) = "white" {}
         
-    	[Header(Alpha Clipping Settings)] [Space(8)]
         [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
         _Cutoff("Alpha CutOff", Range(0.0, 1.0)) = 0.5
         
-        [Header(Other Settings)] [Space(8)]
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Float) = 2
     	
     	[HideInInspector] _AddPrecomputedVelocity("_AddPrecomputedVelocity", Float) = 0.0
+    	[HideInInspector] _StencilRef ("Stencil Ref", Integer) = 2 // YStencilUsage.StandardPBR
+    	[HideInInspector] _StencilWriteMask ("Stencil Write Mask", Integer) = 2 // YStencilUsage.StandardPBR
+    	[HideInInspector] _MotionVectorStencilRef ("Motion Vector Stencil Ref", Integer) = 128 // YStencilUsage.MotionVector
+    	[HideInInspector] _MotionVectorStencilWriteMask ("Motion Vector Stencil Write Mask", Integer) = 128 // YStencilUsage.MotionVector
     }
     
     SubShader
@@ -73,7 +70,6 @@
             #pragma multi_compile _ _TAA
 
             // Unity defined keywords
-            #pragma multi_compile _ LIGHTMAP_ON
             #pragma multi_compile _ PROBE_VOLUMES_L1 PROBE_VOLUMES_L2
 
             #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
@@ -92,6 +88,14 @@
             ZTest Equal // 使用 depth prepass
             Cull [_Cull]
             
+            Stencil
+            {
+                WriteMask [_StencilWriteMask]
+                Ref [_StencilRef]
+                Comp Always
+                Pass Replace
+            }
+            
             HLSLPROGRAM
             #pragma target 4.5
             
@@ -104,7 +108,7 @@
 
             #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-            #include "StandardPBRGBufferPass.hlsl"
+            #include "../SharedGBufferPass.hlsl"
             ENDHLSL
         }
 
@@ -132,7 +136,7 @@
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-			#include "../ShadowCasterCommon.hlsl"
+			#include "../SharedShadowCasterPass.hlsl"
 			ENDHLSL
 		}
 
@@ -160,7 +164,7 @@
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-			#include "../DepthPrePassCommon.hlsl"
+			#include "../SharedDepthPrePass.hlsl"
 			ENDHLSL
 		}
 
@@ -189,7 +193,7 @@
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-			#include "../ThinGBufferCommon.hlsl"
+			#include "../SharedThinGBufferPass.hlsl"
 			ENDHLSL
 		}
 		
@@ -209,7 +213,7 @@
 
 			#include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-			#include "../MetaCommon.hlsl"
+			#include "../SharedMetaPass.hlsl"
 			ENDHLSL
 		}
 
@@ -225,8 +229,8 @@
             
             Stencil
             {
-                WriteMask 1
-                Ref 1
+                WriteMask [_MotionVectorStencilWriteMask]
+                Ref [_MotionVectorStencilRef]
                 Comp Always
                 Pass Replace
             }
@@ -246,7 +250,7 @@
 
             #include "../../ShaderLibrary/Core/YPipelineCore.hlsl"
 			#include "StandardPBRInput.hlsl"
-			#include "../MotionVectorCommon.hlsl"
+			#include "../SharedMotionVectorPass.hlsl"
             ENDHLSL
 		}
     }

@@ -2,14 +2,15 @@
 #define YPIPELINE_GBUFFER_COMMON_INCLUDED
 
 #include "../../../Runtime/PipelinePasses/DeferredPasses/MaterialID.cs.hlsl"
-#include "../EncodingLibrary.hlsl"
+#include "../Utilities/EncodingLib.hlsl"
 
 struct GBufferOutput
 {
-    float4 gBuffer0     : SV_Target0; // RGBA8_SRGB: albedo, AO 
-    float4 gBuffer1     : SV_Target1; // RGBA8_UNORM: normal, roughness
-    float4 gBuffer2     : SV_Target2; // RGBA8_UNORM: reflectance, metallic, material ID (alpha）
-    float3 gBuffer3     : SV_Target3; // R11G11B10_FLOAT: emission
+    float4 colorAttachment : SV_Target0; // emission
+    float4 gBuffer0        : SV_Target1; // RGBA8_SRGB: albedo, AO 
+    float4 gBuffer1        : SV_Target2; // RGBA8_UNORM: normal, roughness
+    float4 gBuffer2        : SV_Target3; // RGBA8_UNORM: reflectance, metallic, material ID (alpha）
+    float4 gBuffer3        : SV_Target4; // RGBA8_UNORM: custom parameters based on project requirements
 };
 
 inline float PackMaterialID(uint materialID)

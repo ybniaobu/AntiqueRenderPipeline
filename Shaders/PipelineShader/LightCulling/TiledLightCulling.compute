@@ -8,7 +8,7 @@
 #define THREAD_NUM_Y 16
 
 #include "../../ShaderLibrary/Core/YPipelineCSCore.hlsl"
-#include "../../ShaderLibrary/IntersectionTestLibrary.hlsl"
+#include "../../ShaderLibrary/Utilities/IntersectionTestLib.hlsl"
 
 TEXTURE2D(_CameraDepthTexture);
 
